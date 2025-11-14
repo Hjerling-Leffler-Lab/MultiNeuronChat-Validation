@@ -1,0 +1,1317 @@
+configfile: "workflow/config.yaml"
+
+container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:latest"
+
+CASES = config["cases"]
+MEAN_TYPES = config["mean_types"]
+PROPORTIONS = config["proportions"]
+SEXES = config.get("sexes", ["f", "m"])
+N_DATASETS = int(config.get("n_datasets", 10))
+
+rule run_all:
+    input:
+        expand(
+            'results/neuron_chat/timing/{case}_{proportion}_{dataset_index}_comparison.csv',
+            case=CASES,
+            proportion=PROPORTIONS,
+            dataset_index=range(0,N_DATASETS),
+        ),
+        expand(
+            f"results/MNC_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
+            mean_type=["mean", "tri_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=CASES,
+            proportion=PROPORTIONS,
+            dataset_index=range(0, N_DATASETS),
+        ),
+        expand(
+            f"results/MNC_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
+           mean_type=["trim_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
+            case=CASES,
+            proportion=PROPORTIONS,
+            dataset_index=range(0, N_DATASETS),
+        ),
+
+rule plot_all:
+    input:
+        expand(
+            "results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}.pdf",
+            mean_type=["tri_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            statistical_test=['KS', 'Anderson', 'CVM', 'MannWhitneyU'],
+            case=CASES,
+        ),
+
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary.pdf',
+            mean_type=["tri_mean", 'mean'],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf',
+            mean_type=["tri_mean", 'mean'],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf',
+            mean_type=["tri_mean", 'mean'],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf',
+            mean_type=["tri_mean", 'mean'],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf',
+            mean_type=["tri_mean", 'mean'],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary_with_significance.pdf',
+            mean_type=["tri_mean", 'mean'],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary.pdf',
+            mean_type=["tri_mean", 'mean'],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary.pdf',
+            mean_type=["trim_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf',
+            mean_type=["trim_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf',
+            mean_type=["trim_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf',
+            mean_type=["trim_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf',
+            mean_type=["trim_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary_with_significance.pdf',
+            mean_type=["trim_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary.pdf',
+            mean_type=["trim_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+
+        expand(
+            'results/figs/pr_auc_comparison/{case}.pdf',
+            case=CASES,
+        ),
+
+        # Timing figures
+        'results/figs/timing_results/timings.pdf',
+        'results/figs/timing_results/legend.pdf',
+
+        # Timing summary CSV and XLSX
+        path_to_timing_result_summary_csv='results/Timing_results/T3_MNC_Runtime.csv',
+        path_to_timing_result_summary_xlsx='results/Timing_results/T3_MNC_Runtime.xlsx',
+
+        # Table for performed perturbations
+        path_to_gene_perturbations_excel="results/tables/performed_perturbations_table.xlsx",
+        
+        # Path to PR AUCs summary table
+        path_to_pr_auc_summary_table_excel="results/tables/T4_pr_aucs_summary_table.xlsx",
+
+        path_to_ks_figure= expand(
+            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf",
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        path_to_anderson_figures= expand(
+            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf",
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        path_to_cvm_figure= expand(
+            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf",
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        path_to_mwu_figure= expand(
+            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf",
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        path_to_ks_figure_trim_mean= expand(
+            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf",
+                mean_type=['trim_mean'],
+                trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+                case=CASES,
+                proportion=PROPORTIONS,
+        ),
+        path_to_anderson_figures_trim_mean=expand(
+            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf",
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        path_to_cvm_figure_trim_mean=expand(
+            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf",
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+        path_to_mwu_figure_trim_mean=expand(
+            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf",
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=CASES,
+            proportion=PROPORTIONS,
+        ),
+
+        # path_to_legend_simulated="results/figs/umap/simulated/legend.pdf",
+        # path_to_umap_cell_type_annotated_simulated="results/figs/umap/simulated/umap_cell_type_annotated.png",
+        # path_to_umap_disease_annotated_simulated="results/figs/umap/simulated/umap_disease_annotated.png",
+
+        # path_to_legend="results/figs/umap/original_vs_simulated/legend.pdf",
+        # path_to_umap_all_original="results/figs/umap/original_vs_simulated/umap_original.png",
+        # path_to_umap_all_simulated="results/figs/umap/original_vs_simulated/umap_simulated.png"
+
+rule plot_precision_recall_plots:
+    input:
+        path_to_script="src/plotting/plot_precision_recall_b.py",
+
+        paths_to_summary_dfs = expand(
+            "results/figs/precision_recall/summary_dfs/{mean_type}_{trim_mean_fraction}_{statistical_test}_{case}_{proportion}.pkl",
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            statistical_test=lambda wildcards: wildcards.statistical_test,
+            case=lambda wildcards: wildcards.case,
+            proportion=PROPORTIONS,
+        ),
+    output:
+        path_to_output_figure="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}.pdf"
+    params:
+        mean_type_to_plot=lambda wildcards: wildcards.mean_type,
+        case_to_plot=lambda wildcards: wildcards.case,
+        proportions_to_plot=" ".join(map(str, PROPORTIONS)),
+        samples_in_dataset=int(config.get("n_samples_per_group_and_sex", 40))*2,
+        statistical_tests=lambda wildcards: wildcards.statistical_test,
+        width_of_figure_in_cm=8.5,
+        height_of_figure_in_cm=8.2/2,
+        dpi=300,
+        font_size=8,
+        label_font_size=8,
+        show_figure=False
+    wildcard_constraints:
+        mean_type = "mean|tri_mean|trim_mean",
+        trim_mean_fraction = "0|0\\.[0-9]+",
+        case = "CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        statistical_test="KS|Anderson|CVM|MannWhitneyU",
+    resources:
+        slurm_partition="shared",
+        runtime=60,                 # 1 hours
+        mem_mb=4_000,               # 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --paths_to_summary_dfs {input.paths_to_summary_dfs} \
+        --path_to_output_figure {output.path_to_output_figure} \
+        --mean_type_to_plot {params.mean_type_to_plot} \
+        --case_to_plot {params.case_to_plot} \
+        --proportions_to_plot {params.proportions_to_plot} \
+        --samples_in_dataset {params.samples_in_dataset} \
+        --statistical_tests {params.statistical_tests} \
+        --width_of_figure_in_cm {params.width_of_figure_in_cm} \
+        --height_of_figure_in_cm {params.height_of_figure_in_cm} \
+        --dpi {params.dpi} \
+        --font_size {params.font_size} \
+        --label_font_size {params.label_font_size}
+        """
+
+rule create_summary_statistics:
+    input:
+        path_to_script="src/plotting/plot_precision_recall_a.py",
+
+        paths_to_mnc_object=expand(
+            "results/MNC_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl",
+            statistical_test=lambda wildcards: wildcards.statistical_test,
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            case=lambda wildcards: wildcards.case,
+            proportion=lambda wildcards: wildcards.proportion,
+            dataset_index=range(0,N_DATASETS),
+        ),
+        paths_to_wasserstein_object=expand(
+            "results/Wasserstein_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl",
+            statistical_test=lambda wildcards: wildcards.statistical_test,
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            case=lambda wildcards: wildcards.case,
+            proportion=lambda wildcards: wildcards.proportion,
+            dataset_index=range(0,N_DATASETS),
+        ),
+        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways.csv"
+    output:
+        path_to_summary_df="results/figs/precision_recall/summary_dfs/{mean_type}_{trim_mean_fraction}_{statistical_test}_{case}_{proportion}.pkl",
+    params:
+        statistical_test=lambda wildcards: wildcards.statistical_test,
+        mean_type=lambda wildcards: wildcards.mean_type,
+        trim_mean_fraction= lambda wildcards: wildcards.trim_mean_fraction,
+        case=lambda wildcards: wildcards.case,
+        proportion=lambda wildcards: wildcards.proportion,
+    wildcard_constraints:
+        mean_type="mean|tri_mean|trim_mean",
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition="shared",
+        runtime=240,                # 4 hours
+        mem_mb=2_000,               # 2 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --paths_to_mnc_object {input.paths_to_mnc_object} \
+        --paths_to_wasserstein_object {input.paths_to_wasserstein_object} \
+        --path_to_expected_perturbations {input.path_to_expected_perturbations} \
+        --path_to_summary_df {output.path_to_summary_df} \
+        --statistical_test {params.statistical_test} \
+        --mean_type {params.mean_type} \
+        --case {params.case} \
+        --proportion {params.proportion}
+        """
+
+rule get_pr_curve_data:
+    input:
+        path_to_script = "src/plotting/plot_pr_curves_a.py",
+
+        path_to_mnc_files = expand(
+            "results/MNC_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl",
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            case=lambda wildcards: wildcards.case,
+            proportion=lambda wildcards: wildcards.proportion,
+            dataset_index=range(0,N_DATASETS),
+        ),
+        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways.csv"
+    output:
+        path_to_curves_output='results/figs/pr_curves/summary_data/curves/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+        path_to_pr_aucs_output='results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+        path_to_error_bands_dict='results/figs/pr_curves/summary_data/error_bands/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+    params:
+        statistical_tests="KS Anderson CVM MannWhitneyU",
+    wildcard_constraints:
+        mean_type="mean|tri_mean|trim_mean",
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition = "shared",
+        runtime = 240,  # 4 hours
+        mem_mb = 2_000,  # 2 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --paths_to_mnc_files {input.path_to_mnc_files} \
+        --path_to_expected_perturbations {input.path_to_expected_perturbations} \
+        --path_to_curves_output {output.path_to_curves_output} \
+        --path_to_pr_aucs_output {output.path_to_pr_aucs_output} \
+        --path_to_error_bands_dict {output.path_to_error_bands_dict} \
+        --statistical_tests {params.statistical_tests}
+        """
+
+rule plot_pr_curves_and_auc:
+    input:
+        path_to_script = "src/plotting/plot_pr_curves_b.py",
+
+        path_to_curves='results/figs/pr_curves/summary_data/curves/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+        path_to_pr_aucs='results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+        path_to_error_bands_dict='results/figs/pr_curves/summary_data/error_bands/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+    output:
+        path_to_summary_pr_curves_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary.pdf',
+        path_to_pr_curves_KS_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf',
+        path_to_pr_curves_Anderson_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf',
+        path_to_pr_curves_CVM_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf',
+        path_to_pr_curves_MannWhitneyU_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf',
+        path_to_pr_aucs_with_significance_fig='results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary_with_significance.pdf',
+        path_to_pr_aucs_fig='results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary.pdf',
+    params:
+        pr_curves_width_of_figure_in_cm=8,
+        pr_curves_height_of_figure_in_cm=8,
+        pr_aucs_width_of_figure_in_cm=8,
+        pr_aucs_height_of_figure_in_cm=8,
+        font_size=8,
+    wildcard_constraints:
+        mean_type="mean|tri_mean|trim_mean",
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition = "shared",
+        runtime = 15,               # 15 min
+        mem_mb = 800,               # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_curves {input.path_to_curves} \
+        --path_to_pr_aucs {input.path_to_pr_aucs} \
+        --path_to_error_bands_dict {input.path_to_error_bands_dict} \
+        --path_to_summary_pr_curves_fig {output.path_to_summary_pr_curves_fig} \
+        --path_to_pr_curves_KS_fig {output.path_to_pr_curves_KS_fig} \
+        --path_to_pr_curves_Anderson_fig {output.path_to_pr_curves_Anderson_fig} \
+        --path_to_pr_curves_CVM_fig {output.path_to_pr_curves_CVM_fig} \
+        --path_to_pr_curves_MannWhitneyU_fig {output.path_to_pr_curves_MannWhitneyU_fig} \
+        --path_to_pr_aucs_with_significance_fig {output.path_to_pr_aucs_with_significance_fig} \
+        --path_to_pr_aucs_fig {output.path_to_pr_aucs_fig} \
+        --pr_curves_width_of_figure_in_cm {params.pr_curves_width_of_figure_in_cm} \
+        --pr_curves_height_of_figure_in_cm {params.pr_curves_height_of_figure_in_cm} \
+        --pr_aucs_width_of_figure_in_cm {params.pr_aucs_width_of_figure_in_cm} \
+        --pr_aucs_height_of_figure_in_cm {params.pr_aucs_height_of_figure_in_cm} \
+        --font_size {params.font_size}
+        """
+
+rule plot_pr_auc_comparision_of_mean_types:
+    input:
+        path_to_script='src/plotting/plot_pr_aucs.py',
+
+        path_to_curves_output=expand(
+            'results/figs/pr_curves/summary_data/curves/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=lambda wildcards: wildcards.case,
+            proportion=PROPORTIONS,
+        ),
+        path_to_pr_aucs_output=expand(
+            'results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=lambda wildcards: wildcards.case,
+            proportion=PROPORTIONS,
+        ),
+        path_to_error_bands_dict=expand(
+            'results/figs/pr_curves/summary_data/error_bands/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=lambda wildcards: wildcards.case,
+            proportion=PROPORTIONS,
+        ),
+
+        path_to_curves_output_trim_mean=expand(
+            'results/figs/pr_curves/summary_data/curves/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=lambda wildcards: wildcards.case,
+            proportion=PROPORTIONS,
+        ),
+        path_to_pr_aucs_output_trim_mean=expand(
+            'results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=lambda wildcards: wildcards.case,
+            proportion=PROPORTIONS,
+        ),
+        path_to_error_bands_dict_trim_mean=expand(
+            'results/figs/pr_curves/summary_data/error_bands/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=lambda wildcards: wildcards.case,
+            proportion=PROPORTIONS,
+        )
+    output:
+        path_to_output_figure='results/figs/pr_auc_comparison/{case}.pdf',
+    params:
+        width_in_cm=20,
+        height_in_cm=8,
+        font_size=8,
+
+        path_to_curves='results/figs/pr_curves/summary_data/curves/',
+        path_to_pr_aucs='results/figs/pr_curves/summary_data/pr_aucs/',
+        path_to_error_bands_dict='results/figs/pr_curves/summary_data/error_bands/',
+    wildcard_constraints:
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+    resources:
+        slurm_partition="shared",
+        runtime=5,# 5 min
+        mem_mb=800,# 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_curves {params.path_to_curves} \
+        --path_to_pr_aucs {params.path_to_pr_aucs} \
+        --path_to_error_bands_dict {params.path_to_error_bands_dict} \
+        --path_to_output_figure {output.path_to_output_figure} \
+        --case {wildcards.case} \
+        --width_in_cm {params.width_in_cm} \
+        --height_in_cm {params.height_in_cm} \
+        --font_size {params.font_size}
+        """
+
+rule plot_timings:
+    input:
+        path_to_script = 'src/plotting/plot_timing_MNC.py',
+
+        path_to_timings_mean_and_tri_mean = expand(
+            "results/Timing_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl",
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=CASES,
+            proportion=PROPORTIONS,
+            dataset_index=range(0, N_DATASETS),
+        ),
+        path_to_timings_trim_mean = expand(
+            "results/Timing_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl",
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=CASES,
+            proportion=PROPORTIONS,
+            dataset_index=range(0,N_DATASETS),
+        )
+    output:
+        path_to_timing_figure = 'results/figs/timing_results/timings.pdf',
+        path_to_timing_legend = 'results/figs/timing_results/legend.pdf',
+    params:
+        path_to_timing_results = 'results/Timing_results/',
+
+        width_in_cm=17,
+        height_in_cm=5.3,
+
+        width_in_cm_legend=4,
+        height_in_cm_legend=3,
+
+        fontsize=8,
+    resources:
+        slurm_partition = "shared",
+        runtime = 5,  # 5 min
+        mem_mb = 800,  # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_all_timings {params.path_to_timing_results} \
+        --path_to_timing_fig {output.path_to_timing_figure} \
+        --path_to_legend_fig {output.path_to_timing_legend} \
+        --width_in_cm {params.width_in_cm} \
+        --height_in_cm {params.height_in_cm} \
+        --width_in_cm_legend {params.width_in_cm_legend} \
+        --height_in_cm_legend {params.height_in_cm_legend} \
+        --fontsize {params.fontsize}
+        """
+
+rule create_timing_result_summary_files:
+    input:
+        path_to_script = 'src/tables/create_timing_summary_tables.py',
+
+        path_to_timings_mean_and_tri_mean= expand(
+            "results/Timing_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl",
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=CASES,
+            proportion=PROPORTIONS,
+            dataset_index=range(0,N_DATASETS),
+        ),
+        path_to_timings_trim_mean=expand(
+            "results/Timing_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl",
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=CASES,
+            proportion=PROPORTIONS,
+            dataset_index=range(0,N_DATASETS),
+        )
+    output:
+        path_to_timing_result_summary_csv='results/Timing_results/T3_MNC_Runtime.csv',
+        path_to_timing_result_summary_xlsx='results/Timing_results/T3_MNC_Runtime.xlsx',
+    params:
+        path_to_timing_results = 'results/Timing_results/',
+    resources:
+        slurm_partition = "shared",
+        runtime = 10,               # 10 min
+        mem_mb = 800,               # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_timing_results {params.path_to_timing_results} \
+        --path_to_timing_result_summary_csv {output.path_to_timing_result_summary_csv} \
+        --path_to_timing_result_summary_xlsx {output.path_to_timing_result_summary_xlsx}
+        """
+
+rule create_performed_perturbations_table:
+    input:
+        path_to_script = 'src/tables/create_performed_perturbations_table.py',
+
+        path_to_gene_perturbations_csv="data/simulation/gene_perturbations_to_perform.csv"
+    output:
+        path_to_gene_perturbations_excel="results/tables/T2_perturbations.xlsx",
+    resources:
+        slurm_partition = "shared",
+        runtime = 5,               # 5 min
+        mem_mb = 800,             # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_gene_perturbations_csv {input.path_to_gene_perturbations_csv} \
+        --path_to_gene_perturbations_excel {output.path_to_gene_perturbations_excel}
+        """
+
+rule create_pr_auc_summary_table:
+    input:
+        path_to_script = 'src/tables/create_pr_auc_summary_table.py',
+
+        path_to_pr_aucs_outputs_mean_and_tri_mean=expand(
+            'results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=CASES,
+            proportion=PROPORTIONS
+        ),
+        path_to_pr_aucs_outputs_trim_mean=expand(
+            'results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=CASES,
+            proportion=PROPORTIONS
+        ),
+    output:
+        path_to_pr_auc_summary_table_excel="results/tables/T4_pr_aucs_summary_table.xlsx",
+    params:
+        path_to_summary_pkls="results/figs/pr_curves/summary_data/pr_aucs/"
+    resources:
+        slurm_partition = "shared",
+        runtime = 10,               # 10 min
+        mem_mb = 800,             # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_summary_pkls {params.path_to_summary_pkls} \
+        --path_to_pr_auc_summary_table_excel {output.path_to_pr_auc_summary_table_excel}
+        """
+
+
+rule plot_wasserstein_vs_p_values:
+    input:
+        path_to_script = 'src/plotting/plot_wasserstein_vs_p_values.py',
+        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways.csv",
+        mnc_file_paths = expand(
+            'results/MNC_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl',
+            mean_type = lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction = lambda wildcards: wildcards.trim_mean_fraction,
+            case = lambda wildcards: wildcards.case,
+            proportion = lambda wildcards: wildcards.proportion,
+            dataset_index=range(0, N_DATASETS),
+        ),
+        wasserstein_paths = expand(
+            'results/Wasserstein_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl',
+            mean_type = lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction = lambda wildcards: wildcards.trim_mean_fraction,
+            case = lambda wildcards: wildcards.case,
+            proportion = lambda wildcards: wildcards.proportion,
+            dataset_index=range(0, N_DATASETS),
+        ),
+    output:
+        path_to_ks_figure = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf",
+        path_to_anderson_figures = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf",
+        path_to_cvm_figure = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf",
+        path_to_mwu_figure = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf",
+    params:
+        mean_type=lambda wildcards: wildcards.mean_type,
+        case=lambda wildcards: wildcards.case,
+        proportion=lambda wildcards: wildcards.proportion,
+        width_in_cm=7,
+        height_in_cm=7,
+        font_size=8,
+    wildcard_constraints:
+        mean_type="mean|tri_mean|trim_mean",
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+    resources:
+        slurm_partition = "shared",
+        runtime = 30,               # 30 min
+        mem_mb = 2_000,             # 2 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_expected_perturbations {input.path_to_expected_perturbations} \
+        --mnc_file_paths {input.mnc_file_paths} \
+        --wasserstein_paths {input.wasserstein_paths} \
+        --path_to_ks_figure {output.path_to_ks_figure} \
+        --path_to_anderson_figures {output.path_to_anderson_figures} \
+        --path_to_cvm_figure {output.path_to_cvm_figure} \
+        --path_to_mwu_figure {output.path_to_mwu_figure} \
+        --mean_type {params.mean_type} \
+        --case {params.case} \
+        --proportion {params.proportion} \
+        --width_in_cm {params.width_in_cm} \
+        --height_in_cm {params.height_in_cm} \
+        --font_size {params.font_size}
+        """
+
+rule fit_umap:
+    input:
+        path_to_script = "src/plotting/fit_umap.py",
+
+        path_to_original_data = "data/original_scz_ctrl/Samples_conos_cellranger_pagoda_TH_and_D_adj__filtered_and_CT_annotated_and_CT_clustered.loom",
+        path_to_simulated_data = "data/simulated_datasets/CASE_1.5/1.0/CASE_1.5_1.0_0.loom",
+    output:
+        path_to_original_data_umap = "data/umap/original_umap.loom",
+        path_to_simulated_data_umap = "data/umap/simulated.loom",
+        path_to_combined_umap = "data/umap/combined.loom",
+    resources:
+        slurm_partition = "shared",
+        runtime = 720,               # 12h
+        mem_mb = 64_000,             # 16 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_original_data {input.path_to_original_data} \
+        --path_to_simulated_data {input.path_to_simulated_data} \
+        --path_to_original_data_umap {output.path_to_original_data_umap} \
+        --path_to_simulated_data_umap {output.path_to_simulated_data_umap} \
+        --path_to_combined_umap {output.path_to_combined_umap}
+        """
+
+rule plot_umap_only_simulated:
+    input:
+        path_to_script = "src/plotting/plot_umap_only_simulated.py",
+
+        path_to_loom="data/umap/simulated.loom",
+    output:
+        path_to_legend="results/figs/umap/simulated/legend.pdf",
+        path_to_umap_cell_type_annotated="results/figs/umap/simulated/umap_cell_type_annotated.png",
+        path_to_umap_disease_annotated="results/figs/umap/simulated/umap_disease_annotated.png"
+    params:
+        width_in_cm_umap=10.5,
+        height_in_cm_umap=10.5,
+
+        width_in_cm_legend=21,
+        height_in_cm_legend=5,
+
+        font_size=8
+    resources:
+        slurm_partition = "shared",
+        runtime = 60,                # 1h
+        mem_mb = 16_000,             # 16 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_loom {input.path_to_loom} \
+        --path_to_legend {output.path_to_legend} \
+        --path_to_umap_cell_type_annotated {output.path_to_umap_cell_type_annotated} \
+        --path_to_umap_disease_annotated {output.path_to_umap_disease_annotated} \
+        --width_in_cm_umap {params.width_in_cm_umap} \
+        --height_in_cm_umap {params.height_in_cm_umap} \
+        --width_in_cm_legend {params.width_in_cm_legend} \
+        --height_in_cm_legend {params.height_in_cm_legend} \
+        --font_size {params.font_size}
+        """
+
+rule plot_umap_original_vs_simulated:
+    input:
+        path_to_script = "src/plotting/plot_umap.py",
+
+        path_to_loom="data/umap/combined.loom",
+    output:
+        path_to_legend="results/figs/umap/original_vs_simulated/legend.pdf",
+        path_to_umap_all_original="results/figs/umap/original_vs_simulated/umap_original.png",
+        path_to_umap_all_simulated="results/figs/umap/original_vs_simulated/umap_simulated.png"
+    params:
+        width_in_cm_umap=10.5,
+        height_in_cm_umap=10.5,
+
+        width_in_cm_legend=21,
+        height_in_cm_legend=5,
+
+        font_size=8
+    resources:
+        slurm_partition = "shared",
+        runtime = 60,                # 1h
+        mem_mb = 16_000,             # 16 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_loom {input.path_to_loom} \
+        --path_to_legend {output.path_to_legend} \
+        --path_to_umap_all_original {output.path_to_umap_all_original} \
+        --path_to_umap_all_simulated {output.path_to_umap_all_simulated} \
+        --width_in_cm_umap {params.width_in_cm_umap} \
+        --height_in_cm_umap {params.height_in_cm_umap} \
+        --width_in_cm_legend {params.width_in_cm_legend} \
+        --height_in_cm_legend {params.height_in_cm_legend} \
+        --font_size {params.font_size}
+        """
+
+rule normalize_for_neuronchat:
+    input:
+        path_to_script="src/8_run_NeuronChat_normalization.py",
+        input_loom=f"data/simulated_datasets/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.loom",
+    output:
+        output_loom=f"data/neuron_chat_normalized_datasets/{{case}}/{{proportion}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.loom",
+    params:
+        cell_wise_log_normalized_loom = "/tmp/{case}_{proportion}_{dataset_index}_cell_wise_log_normalized.loom",
+        gene_filtered_loom = "/tmp/{case}_{proportion}_{dataset_index}_gene_filtered.loom",
+        chunk_size=8192,
+    wildcard_constraints:
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition = "shared",
+        runtime=720,# 12 hours
+        mem_mb=16_000,   # 8 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --input_loom {input.input_loom} \
+        --cell_wise_log_normalized_loom {params.cell_wise_log_normalized_loom} \
+        --gene_filtered_loom {params.gene_filtered_loom} \
+        --output_loom {output.output_loom} \
+        --chunk_size {params.chunk_size}
+        """
+
+rule run_neuronchat:
+    input:
+        path_to_script="src/9_run_NeuronChat.R",
+        path_to_loom_file=f"data/neuron_chat_normalized_datasets/{{case}}/{{proportion}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.loom",
+    output:
+        path_to_M0_ctrl_rds=f"data/neuron_chat/M0/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}_M0_ctrl.rds",
+        path_to_M0_case_rds=f"data/neuron_chat/M0/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}_M0_case.rds",
+        path_to_M100_ctrl_rds=f"data/neuron_chat/M100/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}_M100_ctrl.rds",
+        path_to_M100_case_rds=f"data/neuron_chat/M100/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}_M100_case.rds",
+        path_to_timing_csv=f"results/neuron_chat/timing/timing_communication_scores/{{case}}_{{proportion}}_{{dataset_index}}.csv",
+    wildcard_constraints:
+        case = "CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion = "0.1|0.3|0.5|0.8|1.0",
+        dataset_index = "[0-9]+",
+    resources:
+        slurm_partition="shared",
+        runtime=360,# 6 hours
+        mem_mb=16_000,# 16 GB
+    shell:
+        """
+        Rscript "{input.path_to_script}" \
+        "{input.path_to_loom_file}" \
+        "{output.path_to_M0_ctrl_rds}" \
+        "{output.path_to_M0_case_rds}" \
+        "{output.path_to_M100_ctrl_rds}" \
+        "{output.path_to_M100_case_rds}" \
+        "{output.path_to_timing_csv}"
+        """
+
+rule run_neuronchat_comparison:
+    input:
+        path_to_script = "src/10_run_NeuronChat_comparison.R",
+        m0_ctrl = "data/neuron_chat/M0/{case}/{proportion}/{case}_{proportion}_{dataset_index}_M0_ctrl.rds",
+        m0_case = "data/neuron_chat/M0/{case}/{proportion}/{case}_{proportion}_{dataset_index}_M0_case.rds",
+        m100_ctrl = "data/neuron_chat/M100/{case}/{proportion}/{case}_{proportion}_{dataset_index}_M100_ctrl.rds",
+        m100_case = "data/neuron_chat/M100/{case}/{proportion}/{case}_{proportion}_{dataset_index}_M100_case.rds",
+    output:
+        # merged objects
+        m0_merged    = "results/neuron_chat/merged/M0/{case}/{proportion}/{case}_{proportion}_{dataset_index}_merged.rds",
+        m100_merged  = "results/neuron_chat/merged/M100/{case}/{proportion}/{case}_{proportion}_{dataset_index}_merged.rds",
+
+        # comparison figures
+        m0_cmp_png      = "results/neuron_chat/figs/M0/{case}/{proportion}/{case}_{proportion}_{dataset_index}_comparison.png",
+        m0_ranknet_png  = "results/neuron_chat/figs/M0/{case}/{proportion}/{case}_{proportion}_{dataset_index}_rankNet.png",
+        m100_cmp_png    = "results/neuron_chat/figs/M100/{case}/{proportion}/{case}_{proportion}_{dataset_index}_comparison.png",
+        m100_ranknet_png= "results/neuron_chat/figs/M100/{case}/{proportion}/{case}_{proportion}_{dataset_index}_rankNet.png",
+
+        # rankNet data (counts/weights)
+        m0_counts   = "results/neuron_chat/rankNet/M0/{case}/{proportion}/{case}_{proportion}_{dataset_index}_rankNet_counts.rds",
+        m0_weights  = "results/neuron_chat/rankNet/M0/{case}/{proportion}/{case}_{proportion}_{dataset_index}_rankNet_weights.rds",
+        m100_counts = "results/neuron_chat/rankNet/M100/{case}/{proportion}/{case}_{proportion}_{dataset_index}_rankNet_counts.rds",
+        m100_weights= "results/neuron_chat/rankNet/M100/{case}/{proportion}/{case}_{proportion}_{dataset_index}_rankNet_weights.rds",
+
+        # timing CSV (for rankNet on M0 & M100)
+        timing_csv  = "results/neuron_chat/timing/timing_comparison/{case}_{proportion}_{dataset_index}_comparison.csv",
+    params:
+        case_label       = lambda wc: wc.case,
+        proportion_label = lambda wc: wc.proportion,
+        dataset_id_label = lambda wc: wc.dataset_index,
+    wildcard_constraints:
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition = "shared",
+        runtime = 10,           # 10 minutes (adjust as needed)
+        mem_mb = 16_000,           # 16 GB (adjust as needed)
+    shell:
+        r"""
+        Rscript {input.path_to_script} \
+          {input.m0_ctrl} \
+          {input.m0_case} \
+          {input.m100_ctrl} \
+          {input.m100_case} \
+          {output.m0_merged} \
+          {output.m100_merged} \
+          {output.m0_cmp_png} \
+          {output.m0_ranknet_png} \
+          {output.m100_cmp_png} \
+          {output.m100_ranknet_png} \
+          {output.m0_counts} \
+          {output.m0_weights} \
+          {output.m100_counts} \
+          {output.m100_weights} \
+          {output.timing_csv} \
+          {params.case_label} {params.proportion_label} {params.dataset_id_label}
+        """
+
+
+rule extract_ligands_and_targets:
+    input:
+        path_to_script="src/1_extract_ligand_target_production.R",
+
+        path_to_joined_simulation_parameters="model/estimated_parameters_all_genes_combined.rds",
+        path_to_cell_count_parameters="model/cell_types_gamma_parameters.json",
+        path_to_human_extended_database="data/db/interactionDB_human_extended.tsv",
+    output:
+        path_to_output_perturbations_to_perform="data/simulation/perturbations_to_perform.csv",
+        path_to_output_expected_perturbed_pathways="data/simulation/expected_perturbed_pathways.csv",
+    resources:
+        slurm_partition = "shared",
+        runtime = 480,               # 8 hours
+        mem_mb= 64_000,              # 64 GB
+    shell:
+        """
+        Rscript {input.path_to_script} \
+        {input.path_to_joined_simulation_parameters} \
+        {input.path_to_cell_count_parameters} \
+        {input.path_to_human_extended_database} \
+        {output.path_to_output_perturbations_to_perform} \
+        {output.path_to_output_expected_perturbed_pathways}
+        """
+
+rule extract_genes_to_perturb_from_perturbations_to_perform:
+    input:
+        path_to_script="src/2_extract_genes_to_perturb_from_perturbations_to_perform.py",
+
+        path_to_perturbations_to_perform="data/simulation/perturbations_to_perform.csv",
+
+    output:
+        path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
+    resources:
+        slurm_partition = "shared",
+        runtime = 240,              # 4 hours
+        mem_mb = 16_000,            # 16 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_perturbations_to_perform {input.path_to_perturbations_to_perform} \
+        --path_to_gene_perturbations_to_perform {output.path_to_gene_perturbations_to_perform}
+        """
+
+############ START OF SIMULATION RULES ############
+
+# I know this is not according to DRY, however, it is definitely easier to read.
+# This can be adjusted in the future, if needed.
+
+rule simulate_SPARSim_control_group:
+    input:
+        path_to_script="src/3_SPARSim_Simulate.R",
+
+        path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
+        path_to_cell_type_count_model="model/cell_types_gamma_parameters.json",
+        path_to_SPARSim_gene_count_model="model/estimated_parameters_all_genes_combined.rds",
+    output:
+        # Attention: The output path should include the same path as params.path_to_datasets_loom_folder
+        expand(
+            "data/simulated_patients/old_version/CTRL_0/{sex}/CTRL_0_{i}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+    params:
+        run_settings=1,
+        n_people_to_simulate=int(config.get("n_people_to_simulate", 60)),
+        log_2_fold_change=0,
+
+        # Attention: This path should be the same as the output path
+        path_to_datasets_loom_folder="data/simulated_patients/old_version/",
+    resources:
+        slurm_partition = "shared",
+        runtime = 1440,             # 24 hours
+        mem_mb = 15_000,            # 15 GB
+    shell:
+        """
+        Rscript {input.path_to_script} \
+        {input.path_to_gene_perturbations_to_perform} \
+        {input.path_to_cell_type_count_model} \
+        {input.path_to_SPARSim_gene_count_model} \
+        {params.path_to_datasets_loom_folder} \
+        {params.run_settings} \
+        {params.n_people_to_simulate} \
+        {params.log_2_fold_change}
+        """
+
+rule simulate_SPARSim_case_group_0_3:
+    input:
+        path_to_script="src/3_SPARSim_Simulate.R",
+
+        path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
+        path_to_cell_type_count_model="model/cell_types_gamma_parameters.json",
+        path_to_SPARSim_gene_count_model="model/estimated_parameters_all_genes_combined.rds",
+    output:
+        # Attention: The output path should include the same path as params.path_to_datasets_loom_folder
+        expand(
+            "data/simulated_patients/old_version/CASE_0.3/{sex}/CASE_0.3_{i}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+    params:
+        run_settings=2,
+        n_people_to_simulate=int(config.get("n_people_to_simulate", 60)),
+        log_2_fold_change=0.3,
+
+        # Attention: This path should be the same as the output path
+        path_to_datasets_loom_folder="data/simulated_patients/old_version/",
+    resources:
+        slurm_partition = "shared",
+        runtime = 1440,             # 24 hours
+        mem_mb = 15_000,            # 15 GB
+    shell:
+        """
+        Rscript {input.path_to_script} \
+        {input.path_to_gene_perturbations_to_perform} \
+        {input.path_to_cell_type_count_model} \
+        {input.path_to_SPARSim_gene_count_model} \
+        {params.path_to_datasets_loom_folder} \
+        {params.run_settings} \
+        {params.n_people_to_simulate} \
+        {params.log_2_fold_change}
+        """
+
+rule simulate_SPARSim_case_group_0_5:
+    input:
+        path_to_script="src/3_SPARSim_Simulate.R",
+
+        path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
+        path_to_cell_type_count_model="model/cell_types_gamma_parameters.json",
+        path_to_SPARSim_gene_count_model="model/estimated_parameters_all_genes_combined.rds",
+    output:
+        # Attention: The output path should include the same path as params.path_to_datasets_loom_folder
+        expand(
+            "data/simulated_patients/old_version/CASE_0.5/{sex}/CASE_0.5_{i}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+    params:
+        run_settings=3,
+        n_people_to_simulate=int(config.get("n_people_to_simulate", 60)),
+        log_2_fold_change=0.5,
+
+        # Attention: This path should be the same as the output path
+        path_to_datasets_loom_folder="data/simulated_patients/old_version/",
+    resources:
+        slurm_partition = "shared",
+        runtime = 1440,             # 24 hours
+        mem_mb = 15_000,            # 15 GB
+    shell:
+        """
+        Rscript {input.path_to_script} \
+        {input.path_to_gene_perturbations_to_perform} \
+        {input.path_to_cell_type_count_model} \
+        {input.path_to_SPARSim_gene_count_model} \
+        {params.path_to_datasets_loom_folder} \
+        {params.run_settings} \
+        {params.n_people_to_simulate} \
+        {params.log_2_fold_change}
+        """
+
+rule simulate_SPARSim_case_group_1:
+    input:
+        path_to_script="src/3_SPARSim_Simulate.R",
+
+        path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
+        path_to_cell_type_count_model="model/cell_types_gamma_parameters.json",
+        path_to_SPARSim_gene_count_model="model/estimated_parameters_all_genes_combined.rds",
+    output:
+        # Attention: The output path should include the same path as params.path_to_datasets_loom_folder
+        expand(
+            "data/simulated_patients/old_version/CASE_1/{sex}/CASE_1_{i}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+    params:
+        run_settings=4,
+        n_people_to_simulate=int(config.get("n_people_to_simulate", 60)),
+        log_2_fold_change=1,
+
+        # Attention: This path should be the same as the output path
+        path_to_datasets_loom_folder="data/simulated_patients/old_version/",
+    resources:
+        slurm_partition = "shared",
+        runtime = 1440,             # 24 hours
+        mem_mb = 15_000,            # 15 GB
+    shell:
+        """
+        Rscript {input.path_to_script} \
+        {input.path_to_gene_perturbations_to_perform} \
+        {input.path_to_cell_type_count_model} \
+        {input.path_to_SPARSim_gene_count_model} \
+        {params.path_to_datasets_loom_folder} \
+        {params.run_settings} \
+        {params.n_people_to_simulate} \
+        {params.log_2_fold_change}
+        """
+
+rule simulate_SPARSim_case_group_1_5:
+    input:
+        path_to_script="src/3_SPARSim_Simulate.R",
+
+        path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
+        path_to_cell_type_count_model="model/cell_types_gamma_parameters.json",
+        path_to_SPARSim_gene_count_model="model/estimated_parameters_all_genes_combined.rds",
+    output:
+        # Attention: The output path should include the same path as params.path_to_datasets_loom_folder
+        expand(
+            "data/simulated_patients/old_version/CASE_1.5/{sex}/CASE_1.5_{i}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+    params:
+        run_settings=5,
+        n_people_to_simulate=int(config.get("n_people_to_simulate", 60)),
+        log_2_fold_change=1.5,
+
+        # Attention: This path should be the same as the output path
+        path_to_datasets_loom_folder="data/simulated_patients/old_version/",
+    resources:
+        slurm_partition = "shared",
+        runtime = 1440,             # 24 hours
+        mem_mb = 15_000,            # 15 GB
+    shell:
+        """
+        Rscript {input.path_to_script} \
+        {input.path_to_gene_perturbations_to_perform} \
+        {input.path_to_cell_type_count_model} \
+        {input.path_to_SPARSim_gene_count_model} \
+        {params.path_to_datasets_loom_folder} \
+        {params.run_settings} \
+        {params.n_people_to_simulate} \
+        {params.log_2_fold_change}
+        """
+
+rule simulate_SPARSim_case_group_0:
+    input:
+        path_to_script="src/3_SPARSim_Simulate.R",
+
+        path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
+        path_to_cell_type_count_model="model/cell_types_gamma_parameters.json",
+        path_to_SPARSim_gene_count_model="model/estimated_parameters_all_genes_combined.rds",
+    output:
+        # Attention: The output path should include the same path as params.path_to_datasets_loom_folder
+        expand(
+            "data/simulated_patients/old_version/CASE_0/{sex}/CASE_0_{i}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+    params:
+        run_settings=6,
+        n_people_to_simulate=int(config.get("n_people_to_simulate", 60)),
+        log_2_fold_change=0,
+
+        # Attention: This path should be the same as the output path
+        path_to_datasets_loom_folder="data/simulated_patients/old_version/",
+    resources:
+        slurm_partition = "shared",
+        runtime = 1440,             # 24 hours
+        mem_mb = 15_000,            # 15 GB
+    shell:
+        """
+        Rscript {input.path_to_script} \
+        {input.path_to_gene_perturbations_to_perform} \
+        {input.path_to_cell_type_count_model} \
+        {input.path_to_SPARSim_gene_count_model} \
+        {params.path_to_datasets_loom_folder} \
+        {params.run_settings} \
+        {params.n_people_to_simulate} \
+        {params.log_2_fold_change}
+        """
+
+############ END OF SIMULATION RULES ############
+
+rule update_loom_version:
+    input:
+        path_to_script="src/4_update_loom_version.py",
+
+        outdated="data/simulated_patients/old_version/{case}/{sex}/{case}_{i}.loom",
+    output:
+        updated="data/simulated_patients/updated_version/{case}/{sex}/{case}_{i}.loom"
+    resources:
+        slurm_partition = "shared",
+        runtime = 15,              # 15 minutes
+        mem_mb = 4_000,            # 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_outdated_loom_file {input.outdated} \
+        --path_to_updated_loom_file {output.updated}
+    """
+
+rule combine_SPARSim_datasets:
+    input:
+        case_looms = lambda wildcards: expand(
+            f"data/simulated_patients/updated_version/{{case}}/{{sex}}/{{case}}_{{i}}.loom",
+            case=[wildcards.case],
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+        unperturbed_case_looms = expand(
+            f"data/simulated_patients/updated_version/CASE_0/{{sex}}/CASE_0_{{i}}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+        control_looms = expand(
+            f"data/simulated_patients/updated_version/CTRL_0/{{sex}}/CTRL_0_{{i}}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+
+        path_to_script="src/5_combine_SPARSim_dataset.py",
+
+    output:
+        path_to_output_loom=f"data/simulated_datasets/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.loom",
+        path_to_patient_meta_output_file=f"data/simulated_meta/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}_meta.csv",
+    params:
+        path_to_case=lambda wildcards: f"data/simulated_patients/updated_version/{wildcards.case}",
+        path_to_non_perturbed_case_folder = f"data/simulated_patients/updated_version/CASE_0/",
+        path_to_ctrl_folder = f"data/simulated_patients/updated_version/CTRL_0/",
+
+        proportion_of_affected_donors=lambda wildcards: wildcards.proportion,
+        dataset_index=lambda wildcards: wildcards.dataset_index,
+        n_samples_per_group_and_sex=int(config.get("n_samples_per_group_and_sex", 40)),
+    wildcard_constraints:
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition = "shared",
+        runtime = 480,              # 8 hour
+        mem_mb = 12_000,            # 12 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_case {params.path_to_case} \
+        --path_to_non_perturbed_case_folder {params.path_to_non_perturbed_case_folder} \
+        --path_to_ctrl_folder {params.path_to_ctrl_folder} \
+        --path_to_output_loom {output.path_to_output_loom} \
+        --path_to_patient_meta_output_file {output.path_to_patient_meta_output_file} \
+        --proportion_of_affected_donors {params.proportion_of_affected_donors} \
+        --dataset_index {params.dataset_index} \
+        --n_samples_per_group_and_sex {params.n_samples_per_group_and_sex}
+        """
+
+rule normalize_datasets:
+    input:
+        path_to_script = "src/6_run_MultiNeuronChat_normalization.py",
+        path_to_dataset_to_normalize=f"data/simulated_datasets/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.loom",
+    output:
+        path_to_subject_wise_max_normalized_loom=f"data/normalized_data/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.loom",
+    params:
+        path_to_cell_wise_log_normalized_loom="/tmp/cell_wise_log_normalized/{case}/{proportion}/{case}_{proportion}_{dataset_index}.loom",
+
+        chunk_size=8192,
+    wildcard_constraints:
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition = "shared",
+        runtime=720,              # 12 hours
+        mem_mb=8_000,            # 8 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_dataset_to_normalize {input.path_to_dataset_to_normalize} \
+        --path_to_cell_wise_log_normalized_loom {params.path_to_cell_wise_log_normalized_loom} \
+        --path_to_subject_wise_max_normalized_loom {output.path_to_subject_wise_max_normalized_loom} \
+        --chunk_size {params.chunk_size}
+        """
+
+rule run_MultiNeuronChat:
+    input:
+        path_to_script="src/7_run_MultiNeuronChat.py",
+        path_to_subject_wise_max_normalized_loom=f"data/normalized_data/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.loom",
+    output:
+        path_to_mnc_output_file=f"results/MNC_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
+        path_to_wasserstein_dict_file=f"results/Wasserstein_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
+        path_to_timing_dict_file=f"results/Timing_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
+    params:
+        mean_type=lambda wildcards: wildcards.mean_type,
+        trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+        n_processes=8
+    wildcard_constraints:
+        mean_type="mean|tri_mean|trim_mean",
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        proportion="0.1|0.3|0.5|0.8|1.0",
+        dataset_index="[0-9]+",
+    resources:
+        # TODO adjust memory and run-time
+        slurm_partition="shared",
+        runtime=720,              # 12 hours
+        mem_mb=8_000,            # 8 GB
+    shell:
+        """ 
+            python {input.path_to_script} \
+            --path_to_subject_wise_max_normalized_loom {input.path_to_subject_wise_max_normalized_loom} \
+            --path_to_mnc_output_file {output.path_to_mnc_output_file} \
+            --path_to_wasserstein_dict_file {output.path_to_wasserstein_dict_file} \
+            --path_to_timing_dict_file {output.path_to_timing_dict_file} \
+            --mean_type {params.mean_type} \
+            --trim_mean_fraction {params.trim_mean_fraction} \
+            --n_processes {params.n_processes}
+        """

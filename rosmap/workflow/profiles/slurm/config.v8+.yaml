@@ -1,0 +1,15 @@
+executor: slurm
+
+software-deployment-method: apptainer
+apptainer-prefix: "${PDC_TMP}/.snakemake/apptainer"
+apptainer-args: "--bind ${PDC_TMP}:/tmp --env TMPDIR=/tmp --env TMP=/tmp --env TEMP=/tmp"
+
+# How many jobs to run in parallel
+jobs: 200
+
+# Common Slurm options
+default-resources:
+  slurm_account: "ADD_ACCOUNT"      # Default account to use for Slurm jobs.
+  slurm_partition: "shared"         # Default partition to use if not specified.
+  runtime: 30                       # Default time limit in minutes for jobs if not specified.
+  mem_mb: 4000                      # Default memory limit in MB if not specified.

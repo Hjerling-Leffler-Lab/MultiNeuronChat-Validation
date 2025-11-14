@@ -1,0 +1,321 @@
+Source,Receiver,Ligand,Target
+Inhibitory PVALB neurons,Inhibitory SST neurons,GABA,GABA-A_a4b3g2S_complex
+Inhibitory VIP neurons,Inhibitory SST neurons,GABA,GABA-A_a4b3g2S_complex
+Astrocytes,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Endothelial and mural cells,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Inhibitory LAMP5 neurons,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Inhibitory SST neurons,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Microglial cells,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Oligodendrocyte progenitor cells,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Oligodendrocytes,Excitatory Layer 2-3 IT neurons I,NRXN1,NLGN4X
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Inhibitory LAMP5 neurons,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Inhibitory SST neurons,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Oligodendrocyte progenitor cells,Excitatory Layer 2-3 IT neurons I,NRXN2,NLGN4X
+Astrocytes,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Endothelial and mural cells,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Inhibitory LAMP5 neurons,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Inhibitory SST neurons,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Microglial cells,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Oligodendrocyte progenitor cells,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Oligodendrocytes,Excitatory Layer 2-3 IT neurons I,NRXN3,NLGN4X
+Excitatory Layer 2-3 IT neurons I,Oligodendrocyte progenitor cells,Glu,Kainate_1_4_complex
+Excitatory Layer 2-3 IT neurons II,Oligodendrocyte progenitor cells,Glu,Kainate_1_4_complex
+Excitatory Layer 3-4 IT neurons,Oligodendrocyte progenitor cells,Glu,Kainate_1_4_complex
+Excitatory Layer 3-6 IT neurons,Oligodendrocyte progenitor cells,Glu,Kainate_1_4_complex
+Excitatory Layer 5-6 CT and NP neurons,Oligodendrocyte progenitor cells,Glu,Kainate_1_4_complex
+Excitatory Layer 5-6 IT neurons I,Oligodendrocyte progenitor cells,Glu,Kainate_1_4_complex
+Excitatory Layer 5-6 IT neurons II,Oligodendrocyte progenitor cells,Glu,Kainate_1_4_complex
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons I,VIP,VIPR1
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 2-3 IT neurons I,ADCYAP1,VIPR1
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 2-3 IT neurons I,ADCYAP1,VIPR1
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 2-3 IT neurons I,ADCYAP1,VIPR1
+Inhibitory PVALB neurons,Excitatory Layer 5-6 CT and NP neurons,GABA,GABA-A_a5b3g2S_complex
+Inhibitory VIP neurons,Excitatory Layer 5-6 CT and NP neurons,GABA,GABA-A_a5b3g2S_complex
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 5-6 IT neurons II,Glu,GRM7
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 5-6 IT neurons II,Glu,GRM7
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 5-6 IT neurons II,Glu,GRM7
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 5-6 IT neurons II,Glu,GRM7
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 5-6 IT neurons II,Glu,GRM7
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 5-6 IT neurons II,Glu,GRM7
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 5-6 IT neurons II,Glu,GRM7
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 3-4 IT neurons,Glu,GRIA4
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 3-4 IT neurons,Glu,GRIA4
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 3-4 IT neurons,Glu,GRIA4
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 3-4 IT neurons,Glu,GRIA4
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 3-4 IT neurons,Glu,GRIA4
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 3-4 IT neurons,Glu,GRIA4
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 3-4 IT neurons,Glu,GRIA4
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons I,GABA,GABBR2
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons I,GABA,GABBR2
+Inhibitory VIP neurons,Endothelial and mural cells,PTHLH,PTH1R
+Inhibitory PVALB neurons,Inhibitory SST neurons,GABA,GABA-A_a1b2g2S_complex
+Inhibitory VIP neurons,Inhibitory SST neurons,GABA,GABA-A_a1b2g2S_complex
+Endothelial and mural cells,Endothelial and mural cells,GJC1,GJC1
+Endothelial and mural cells,Excitatory Layer 5-6 IT neurons I,GJC1,GJC1
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 3-4 IT neurons,Glu,GRIA3
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 3-4 IT neurons,Glu,GRIA3
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 3-4 IT neurons,Glu,GRIA3
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 3-4 IT neurons,Glu,GRIA3
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 3-4 IT neurons,Glu,GRIA3
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 3-4 IT neurons,Glu,GRIA3
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 3-4 IT neurons,Glu,GRIA3
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons II,GABA,GABA-A_a1b2_complex
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons II,GABA,GABA-A_a1b2_complex
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 2-3 IT neurons II,Glu,NMDA_1_2A_complex
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 2-3 IT neurons II,Glu,NMDA_1_2A_complex
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 2-3 IT neurons II,Glu,NMDA_1_2A_complex
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 2-3 IT neurons II,Glu,NMDA_1_2A_complex
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 2-3 IT neurons II,Glu,NMDA_1_2A_complex
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 2-3 IT neurons II,Glu,NMDA_1_2A_complex
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 2-3 IT neurons II,Glu,NMDA_1_2A_complex
+Excitatory Layer 2-3 IT neurons I,Oligodendrocytes,Glu,GRM3
+Excitatory Layer 2-3 IT neurons II,Oligodendrocytes,Glu,GRM3
+Excitatory Layer 3-4 IT neurons,Oligodendrocytes,Glu,GRM3
+Excitatory Layer 3-6 IT neurons,Oligodendrocytes,Glu,GRM3
+Excitatory Layer 5-6 CT and NP neurons,Oligodendrocytes,Glu,GRM3
+Excitatory Layer 5-6 IT neurons I,Oligodendrocytes,Glu,GRM3
+Excitatory Layer 5-6 IT neurons II,Oligodendrocytes,Glu,GRM3
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 5-6 IT neurons I,CO,GUCY1A1
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 5-6 IT neurons I,CO,GUCY1A1
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 5-6 IT neurons I,CO,GUCY1A1
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 5-6 IT neurons I,CO,GUCY1A1
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 5-6 IT neurons I,CO,GUCY1A1
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 5-6 IT neurons I,CO,GUCY1A1
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 5-6 IT neurons I,CO,GUCY1A1
+Inhibitory PVALB neurons,Excitatory Layer 5-6 IT neurons I,CO,GUCY1A1
+Inhibitory VIP neurons,Excitatory Layer 5-6 IT neurons I,CO,GUCY1A1
+Inhibitory LAMP5 neurons,Excitatory Layer 5-6 IT neurons I,NO,GUCY1A1
+Inhibitory PVALB neurons,Excitatory Layer 5-6 IT neurons I,NO,GUCY1A1
+Inhibitory SST neurons,Excitatory Layer 5-6 IT neurons I,NO,GUCY1A1
+Oligodendrocyte progenitor cells,Excitatory Layer 5-6 IT neurons I,NO,GUCY1A1
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 3-6 IT neurons,Glu,GRIA2
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 3-6 IT neurons,Glu,GRIA2
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 3-6 IT neurons,Glu,GRIA2
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 3-6 IT neurons,Glu,GRIA2
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 3-6 IT neurons,Glu,GRIA2
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 3-6 IT neurons,Glu,GRIA2
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 3-6 IT neurons,Glu,GRIA2
+Inhibitory PVALB neurons,Excitatory Layer 5-6 CT and NP neurons,GABA,GABA-A_a4b3d_complex
+Inhibitory VIP neurons,Excitatory Layer 5-6 CT and NP neurons,GABA,GABA-A_a4b3d_complex
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 3-6 IT neurons,Glu,Kainate_3_4_complex
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 3-6 IT neurons,Glu,Kainate_3_4_complex
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 3-6 IT neurons,Glu,Kainate_3_4_complex
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 3-6 IT neurons,Glu,Kainate_3_4_complex
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 3-6 IT neurons,Glu,Kainate_3_4_complex
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 3-6 IT neurons,Glu,Kainate_3_4_complex
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 3-6 IT neurons,Glu,Kainate_3_4_complex
+Inhibitory PVALB neurons,Inhibitory PVALB neurons,GABA,GABA-A_a6b3g2S_complex
+Inhibitory VIP neurons,Inhibitory PVALB neurons,GABA,GABA-A_a6b3g2S_complex
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 5-6 IT neurons I,Glu,GRIA1
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 5-6 IT neurons I,Glu,GRIA1
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 5-6 IT neurons I,Glu,GRIA1
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 5-6 IT neurons I,Glu,GRIA1
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 5-6 IT neurons I,Glu,GRIA1
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 5-6 IT neurons I,Glu,GRIA1
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 5-6 IT neurons I,Glu,GRIA1
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 2-3 IT neurons I,CCK,CCKBR
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 2-3 IT neurons II,CCK,CCKBR
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 3-4 IT neurons,CCK,CCKBR
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 3-6 IT neurons,CCK,CCKBR
+Inhibitory PVALB neurons,Astrocytes,GABA,GABBR1
+Inhibitory VIP neurons,Astrocytes,GABA,GABBR1
+Excitatory Layer 2-3 IT neurons I,Oligodendrocyte progenitor cells,Glu,Kainate_2_5_complex
+Excitatory Layer 2-3 IT neurons II,Oligodendrocyte progenitor cells,Glu,Kainate_2_5_complex
+Excitatory Layer 3-4 IT neurons,Oligodendrocyte progenitor cells,Glu,Kainate_2_5_complex
+Excitatory Layer 3-6 IT neurons,Oligodendrocyte progenitor cells,Glu,Kainate_2_5_complex
+Excitatory Layer 5-6 CT and NP neurons,Oligodendrocyte progenitor cells,Glu,Kainate_2_5_complex
+Excitatory Layer 5-6 IT neurons I,Oligodendrocyte progenitor cells,Glu,Kainate_2_5_complex
+Excitatory Layer 5-6 IT neurons II,Oligodendrocyte progenitor cells,Glu,Kainate_2_5_complex
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons I,GABA,GABA-A_a4b2d_complex
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons I,GABA,GABA-A_a4b2d_complex
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons I,GABA,GABA-A_a1b3_complex
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons I,GABA,GABA-A_a1b3_complex
+Inhibitory SST neurons,Excitatory Layer 5-6 IT neurons I,SST,SSTR1
+Inhibitory SST neurons,Excitatory Layer 5-6 IT neurons I,CORT,SSTR1
+Excitatory Layer 2-3 IT neurons I,Inhibitory SST neurons,Glu,NMDA_1_2D_complex
+Excitatory Layer 2-3 IT neurons II,Inhibitory SST neurons,Glu,NMDA_1_2D_complex
+Excitatory Layer 3-4 IT neurons,Inhibitory SST neurons,Glu,NMDA_1_2D_complex
+Excitatory Layer 3-6 IT neurons,Inhibitory SST neurons,Glu,NMDA_1_2D_complex
+Excitatory Layer 5-6 CT and NP neurons,Inhibitory SST neurons,Glu,NMDA_1_2D_complex
+Excitatory Layer 5-6 IT neurons I,Inhibitory SST neurons,Glu,NMDA_1_2D_complex
+Excitatory Layer 5-6 IT neurons II,Inhibitory SST neurons,Glu,NMDA_1_2D_complex
+Inhibitory PVALB neurons,Excitatory Layer 5-6 IT neurons I,GABA,GABA-A_a1b3g2S_complex
+Inhibitory VIP neurons,Excitatory Layer 5-6 IT neurons I,GABA,GABA-A_a1b3g2S_complex
+Inhibitory PVALB neurons,Excitatory Layer 5-6 CT and NP neurons,GABA,GABA-A_a1b2d_complex
+Inhibitory VIP neurons,Excitatory Layer 5-6 CT and NP neurons,GABA,GABA-A_a1b2d_complex
+Excitatory Layer 2-3 IT neurons I,Inhibitory SST neurons,Glu,GRM1
+Excitatory Layer 2-3 IT neurons II,Inhibitory SST neurons,Glu,GRM1
+Excitatory Layer 3-4 IT neurons,Inhibitory SST neurons,Glu,GRM1
+Excitatory Layer 3-6 IT neurons,Inhibitory SST neurons,Glu,GRM1
+Excitatory Layer 5-6 CT and NP neurons,Inhibitory SST neurons,Glu,GRM1
+Excitatory Layer 5-6 IT neurons I,Inhibitory SST neurons,Glu,GRM1
+Excitatory Layer 5-6 IT neurons II,Inhibitory SST neurons,Glu,GRM1
+Excitatory Layer 2-3 IT neurons I,Inhibitory SST neurons,Glu,GRIN3A
+Excitatory Layer 2-3 IT neurons II,Inhibitory SST neurons,Glu,GRIN3A
+Excitatory Layer 3-4 IT neurons,Inhibitory SST neurons,Glu,GRIN3A
+Excitatory Layer 3-6 IT neurons,Inhibitory SST neurons,Glu,GRIN3A
+Excitatory Layer 5-6 CT and NP neurons,Inhibitory SST neurons,Glu,GRIN3A
+Excitatory Layer 5-6 IT neurons I,Inhibitory SST neurons,Glu,GRIN3A
+Excitatory Layer 5-6 IT neurons II,Inhibitory SST neurons,Glu,GRIN3A
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons I,GABA,GABA-A_a3b3g2S_complex
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons I,GABA,GABA-A_a3b3g2S_complex
+Astrocytes,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Endothelial and mural cells,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Inhibitory LAMP5 neurons,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Inhibitory PVALB neurons,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Inhibitory SST neurons,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Inhibitory VIP neurons,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Microglial cells,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Oligodendrocyte progenitor cells,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Oligodendrocytes,Excitatory Layer 5-6 IT neurons II,NRXN3,NLGN3
+Astrocytes,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Endothelial and mural cells,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Inhibitory LAMP5 neurons,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Inhibitory PVALB neurons,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Inhibitory SST neurons,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Inhibitory VIP neurons,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Microglial cells,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Oligodendrocyte progenitor cells,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Oligodendrocytes,Excitatory Layer 5-6 IT neurons II,NRXN1,NLGN3
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Inhibitory LAMP5 neurons,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Inhibitory PVALB neurons,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Inhibitory SST neurons,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Inhibitory VIP neurons,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Oligodendrocyte progenitor cells,Excitatory Layer 5-6 IT neurons II,NRXN2,NLGN3
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 3-4 IT neurons,Glu,GRM8
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 3-4 IT neurons,Glu,GRM8
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 3-4 IT neurons,Glu,GRM8
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 3-4 IT neurons,Glu,GRM8
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 3-4 IT neurons,Glu,GRM8
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 3-4 IT neurons,Glu,GRM8
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 3-4 IT neurons,Glu,GRM8
+Inhibitory SST neurons,Excitatory Layer 5-6 CT and NP neurons,SST,SSTR2
+Inhibitory SST neurons,Excitatory Layer 5-6 CT and NP neurons,CORT,SSTR2
+Excitatory Layer 2-3 IT neurons I,Inhibitory LAMP5 neurons,ADCYAP1,ADCYAP1R1
+Excitatory Layer 2-3 IT neurons II,Inhibitory LAMP5 neurons,ADCYAP1,ADCYAP1R1
+Excitatory Layer 3-4 IT neurons,Inhibitory LAMP5 neurons,ADCYAP1,ADCYAP1R1
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 5-6 IT neurons I,Glu,Kainate_2_4_complex
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 5-6 IT neurons I,Glu,Kainate_2_4_complex
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 5-6 IT neurons I,Glu,Kainate_2_4_complex
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 5-6 IT neurons I,Glu,Kainate_2_4_complex
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 5-6 IT neurons I,Glu,Kainate_2_4_complex
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 5-6 IT neurons I,Glu,Kainate_2_4_complex
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 5-6 IT neurons I,Glu,Kainate_2_4_complex
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 5-6 IT neurons II,CO,GUCY1A2
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 5-6 IT neurons II,CO,GUCY1A2
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 5-6 IT neurons II,CO,GUCY1A2
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 5-6 IT neurons II,CO,GUCY1A2
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 5-6 IT neurons II,CO,GUCY1A2
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 5-6 IT neurons II,CO,GUCY1A2
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 5-6 IT neurons II,CO,GUCY1A2
+Inhibitory PVALB neurons,Excitatory Layer 5-6 IT neurons II,CO,GUCY1A2
+Inhibitory VIP neurons,Excitatory Layer 5-6 IT neurons II,CO,GUCY1A2
+Inhibitory LAMP5 neurons,Excitatory Layer 5-6 IT neurons II,NO,GUCY1A2
+Inhibitory PVALB neurons,Excitatory Layer 5-6 IT neurons II,NO,GUCY1A2
+Inhibitory SST neurons,Excitatory Layer 5-6 IT neurons II,NO,GUCY1A2
+Oligodendrocyte progenitor cells,Excitatory Layer 5-6 IT neurons II,NO,GUCY1A2
+Excitatory Layer 2-3 IT neurons I,Excitatory Layer 2-3 IT neurons I,CO,GUCY1B1
+Excitatory Layer 2-3 IT neurons II,Excitatory Layer 2-3 IT neurons I,CO,GUCY1B1
+Excitatory Layer 3-4 IT neurons,Excitatory Layer 2-3 IT neurons I,CO,GUCY1B1
+Excitatory Layer 3-6 IT neurons,Excitatory Layer 2-3 IT neurons I,CO,GUCY1B1
+Excitatory Layer 5-6 CT and NP neurons,Excitatory Layer 2-3 IT neurons I,CO,GUCY1B1
+Excitatory Layer 5-6 IT neurons I,Excitatory Layer 2-3 IT neurons I,CO,GUCY1B1
+Excitatory Layer 5-6 IT neurons II,Excitatory Layer 2-3 IT neurons I,CO,GUCY1B1
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons I,CO,GUCY1B1
+Inhibitory VIP neurons,Excitatory Layer 2-3 IT neurons I,CO,GUCY1B1
+Inhibitory LAMP5 neurons,Excitatory Layer 2-3 IT neurons I,NO,GUCY1B1
+Inhibitory PVALB neurons,Excitatory Layer 2-3 IT neurons I,NO,GUCY1B1
+Inhibitory SST neurons,Excitatory Layer 2-3 IT neurons I,NO,GUCY1B1
+Oligodendrocyte progenitor cells,Excitatory Layer 2-3 IT neurons I,NO,GUCY1B1
+Astrocytes,Microglial cells,NRXN1,NLGN1
+Endothelial and mural cells,Microglial cells,NRXN1,NLGN1
+Excitatory Layer 2-3 IT neurons I,Microglial cells,NRXN1,NLGN1
+Excitatory Layer 2-3 IT neurons II,Microglial cells,NRXN1,NLGN1
+Excitatory Layer 3-4 IT neurons,Microglial cells,NRXN1,NLGN1
+Excitatory Layer 3-6 IT neurons,Microglial cells,NRXN1,NLGN1
+Excitatory Layer 5-6 CT and NP neurons,Microglial cells,NRXN1,NLGN1
+Excitatory Layer 5-6 IT neurons I,Microglial cells,NRXN1,NLGN1
+Excitatory Layer 5-6 IT neurons II,Microglial cells,NRXN1,NLGN1
+Inhibitory LAMP5 neurons,Microglial cells,NRXN1,NLGN1
+Inhibitory PVALB neurons,Microglial cells,NRXN1,NLGN1
+Inhibitory SST neurons,Microglial cells,NRXN1,NLGN1
+Inhibitory VIP neurons,Microglial cells,NRXN1,NLGN1
+Microglial cells,Microglial cells,NRXN1,NLGN1
+Oligodendrocyte progenitor cells,Microglial cells,NRXN1,NLGN1
+Oligodendrocytes,Microglial cells,NRXN1,NLGN1
+Excitatory Layer 2-3 IT neurons I,Microglial cells,NRXN2,NLGN1
+Excitatory Layer 2-3 IT neurons II,Microglial cells,NRXN2,NLGN1
+Excitatory Layer 3-4 IT neurons,Microglial cells,NRXN2,NLGN1
+Excitatory Layer 3-6 IT neurons,Microglial cells,NRXN2,NLGN1
+Excitatory Layer 5-6 CT and NP neurons,Microglial cells,NRXN2,NLGN1
+Excitatory Layer 5-6 IT neurons I,Microglial cells,NRXN2,NLGN1
+Excitatory Layer 5-6 IT neurons II,Microglial cells,NRXN2,NLGN1
+Inhibitory LAMP5 neurons,Microglial cells,NRXN2,NLGN1
+Inhibitory PVALB neurons,Microglial cells,NRXN2,NLGN1
+Inhibitory SST neurons,Microglial cells,NRXN2,NLGN1
+Inhibitory VIP neurons,Microglial cells,NRXN2,NLGN1
+Oligodendrocyte progenitor cells,Microglial cells,NRXN2,NLGN1
+Astrocytes,Microglial cells,NRXN3,NLGN1
+Endothelial and mural cells,Microglial cells,NRXN3,NLGN1
+Excitatory Layer 2-3 IT neurons I,Microglial cells,NRXN3,NLGN1
+Excitatory Layer 2-3 IT neurons II,Microglial cells,NRXN3,NLGN1
+Excitatory Layer 3-4 IT neurons,Microglial cells,NRXN3,NLGN1
+Excitatory Layer 3-6 IT neurons,Microglial cells,NRXN3,NLGN1
+Excitatory Layer 5-6 CT and NP neurons,Microglial cells,NRXN3,NLGN1
+Excitatory Layer 5-6 IT neurons I,Microglial cells,NRXN3,NLGN1
+Excitatory Layer 5-6 IT neurons II,Microglial cells,NRXN3,NLGN1
+Inhibitory LAMP5 neurons,Microglial cells,NRXN3,NLGN1
+Inhibitory PVALB neurons,Microglial cells,NRXN3,NLGN1
+Inhibitory SST neurons,Microglial cells,NRXN3,NLGN1
+Inhibitory VIP neurons,Microglial cells,NRXN3,NLGN1
+Microglial cells,Microglial cells,NRXN3,NLGN1
+Oligodendrocyte progenitor cells,Microglial cells,NRXN3,NLGN1
+Oligodendrocytes,Microglial cells,NRXN3,NLGN1

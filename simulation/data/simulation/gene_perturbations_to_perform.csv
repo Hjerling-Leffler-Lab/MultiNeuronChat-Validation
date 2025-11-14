@@ -1,0 +1,58 @@
+Cell_Type,Ligand_or_Target,Gene,Up_or_Down
+Inhibitory SST neurons,GABA-A_a4b3g2S_complex,GABRB3,True
+Inhibitory SST neurons,PNOC,PNOC,False
+Inhibitory SST neurons,GABA-A_a1b2g2S_complex,GABRB2,False
+Inhibitory SST neurons,NMDA_1_2D_complex,GRIN1,True
+Inhibitory SST neurons,GRM1,GRM1,True
+Inhibitory SST neurons,GRIN3A,GRIN3A,False
+Excitatory Layer 2-3 IT neurons I,NLGN4X,NLGN4X,True
+Excitatory Layer 2-3 IT neurons I,VIPR1,VIPR1,False
+Excitatory Layer 2-3 IT neurons I,GABBR2,GABBR2,True
+Excitatory Layer 2-3 IT neurons I,GABA-A_a4b2d_complex,GABRD,False
+Excitatory Layer 2-3 IT neurons I,GABA-A_a1b3_complex,GABRA1,True
+Excitatory Layer 2-3 IT neurons I,HTR4,HTR4,False
+Excitatory Layer 2-3 IT neurons I,GABA-A_a3b3g2S_complex,GABRB3,True
+Excitatory Layer 2-3 IT neurons I,ADRB1,ADRB1,False
+Excitatory Layer 2-3 IT neurons I,GUCY1B1,GUCY1B1,True
+Oligodendrocyte progenitor cells,Kainate_1_4_complex,GRIK4,False
+Oligodendrocyte progenitor cells,Kainate_2_5_complex,GRIK2,False
+Excitatory Layer 5-6 CT and NP neurons,GABA-A_a5b3g2S_complex,GABRG2,True
+Excitatory Layer 5-6 CT and NP neurons,GABA-A_a4b3d_complex,GABRA4,True
+Excitatory Layer 5-6 CT and NP neurons,GLRB,GLRB,True
+Excitatory Layer 5-6 CT and NP neurons,GABA-A_a1b2d_complex,GABRD,False
+Excitatory Layer 5-6 CT and NP neurons,HTR2A,HTR2A,True
+Excitatory Layer 5-6 CT and NP neurons,SSTR2,SSTR2,True
+Excitatory Layer 5-6 IT neurons II,GRM7,GRM7,True
+Excitatory Layer 5-6 IT neurons II,NPY1R,NPY1R,False
+Excitatory Layer 5-6 IT neurons II,NLGN3,NLGN3,False
+Excitatory Layer 5-6 IT neurons II,GUCY1A2,GUCY1A2,True
+Excitatory Layer 3-4 IT neurons,GRIA4,GRIA4,True
+Excitatory Layer 3-4 IT neurons,GRIA3,GRIA3,False
+Excitatory Layer 3-4 IT neurons,GRM8,GRM8,False
+Endothelial and mural cells,PTH1R,PTH1R,True
+Endothelial and mural cells,GJC1,GJC1,True
+Excitatory Layer 2-3 IT neurons II,CHRM3,CHRM3,False
+Excitatory Layer 2-3 IT neurons II,GABA-A_a1b2_complex,GABRB2,False
+Excitatory Layer 2-3 IT neurons II,NMDA_1_2A_complex,GRIN2A,True
+Oligodendrocytes,GRM3,GRM3,False
+Excitatory Layer 5-6 IT neurons I,GUCY1A1,GUCY1A1,False
+Excitatory Layer 5-6 IT neurons I,GRIA1,GRIA1,False
+Excitatory Layer 5-6 IT neurons I,CCK,CCK,False
+Excitatory Layer 5-6 IT neurons I,SSTR1,SSTR1,True
+Excitatory Layer 5-6 IT neurons I,GABA-A_a1b3g2S_complex,GABRG2,True
+Excitatory Layer 5-6 IT neurons I,Kainate_2_4_complex,GRIK4,False
+Excitatory Layer 3-6 IT neurons,GRIA2,GRIA2,True
+Excitatory Layer 3-6 IT neurons,Kainate_3_4_complex,GRIK3,False
+Excitatory Layer 3-6 IT neurons,CHRM1,CHRM1,True
+Excitatory Layer 3-6 IT neurons,OPRD1,OPRD1,True
+Excitatory Layer 3-6 IT neurons,GLRA3,GLRA3,True
+Inhibitory PVALB neurons,GABA-A_a6b3g2S_complex,GABRB3,True
+Inhibitory PVALB neurons,HTR7,HTR7,True
+Astrocytes,GABBR1,GABBR1,True
+Astrocytes,ADRA1A,ADRA1A,False
+Microglial cells,OPRM1,OPRM1,True
+Microglial cells,NLGN1,NLGN1,True
+Inhibitory VIP neurons,HTR1E,HTR1E,False
+Inhibitory VIP neurons,CHRNA2,CHRNA2,False
+Inhibitory VIP neurons,ADRA1B,ADRA1B,False
+Inhibitory LAMP5 neurons,ADCYAP1R1,ADCYAP1R1,False

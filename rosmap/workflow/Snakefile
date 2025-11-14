@@ -1,0 +1,284 @@
+container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:latest"
+
+statistical_tests = ["KS"]
+
+rule run_all:
+    input:
+        # Generate MNC results for the coarse annotation
+        "results/coarse/mnc_cell_type.pkl",
+
+        # Add final plots for the coarse analysis
+        expand("results/figs/coarse/{test}/png/p_value_circle_plot.png",test=statistical_tests),
+        expand("results/figs/coarse/{test}/png/p_value_legend.png",test=statistical_tests),
+        expand("results/figs/coarse/{test}/png/p_value_arrow_legend.png",test=statistical_tests),
+        expand("results/figs/coarse/{test}/pdf/p_value_circle_plot.pdf",test=statistical_tests),
+        expand("results/figs/coarse/{test}/pdf/p_value_legend.pdf",test=statistical_tests),
+        expand("results/figs/coarse/{test}/pdf/p_value_arrow_legend.pdf",test=statistical_tests),
+        "results/figs/coarse/wasserstein/png/wasserstein_circle_plot.png",
+        "results/figs/coarse/wasserstein/png/wasserstein_legend.png",
+        "results/figs/coarse/wasserstein/png/wasserstein_arrow_legend.png",
+        "results/figs/coarse/wasserstein/pdf/wasserstein_circle_plot.pdf",
+        "results/figs/coarse/wasserstein/pdf/wasserstein_legend.pdf",
+        "results/figs/coarse/wasserstein/pdf/wasserstein_arrow_legend.pdf",
+
+rule plot_all:
+    input:
+        "results/figs/clinical_data_plot.pdf",
+
+        expand("results/figs/coarse/{test}/png/p_value_circle_plot.png",test=statistical_tests),
+        expand("results/figs/coarse/{test}/png/p_value_legend.png",test=statistical_tests),
+        expand("results/figs/coarse/{test}/png/p_value_arrow_legend.png",test=statistical_tests),
+        expand("results/figs/coarse/{test}/pdf/p_value_circle_plot.pdf",test=statistical_tests),
+        expand("results/figs/coarse/{test}/pdf/p_value_legend.pdf",test=statistical_tests),
+        expand("results/figs/coarse/{test}/pdf/p_value_arrow_legend.pdf",test=statistical_tests),
+        "results/figs/coarse/wasserstein/png/wasserstein_circle_plot.png",
+        "results/figs/coarse/wasserstein/png/wasserstein_legend.png",
+        "results/figs/coarse/wasserstein/png/wasserstein_arrow_legend.png",
+        "results/figs/coarse/wasserstein/pdf/wasserstein_circle_plot.pdf",
+        "results/figs/coarse/wasserstein/pdf/wasserstein_legend.pdf",
+        "results/figs/coarse/wasserstein/pdf/wasserstein_arrow_legend.pdf",
+
+
+rule join_rosmap_data:
+    input:
+        path_to_script="src/1_join_rosmap_data.py",
+
+        path_to_cell_annotations="data/raw/cell-annotation.n437.csv",
+        path_to_clinical_data="data/raw/ROSMAP_clinical.csv",
+        path_to_matrices="data/raw/count_matrices",
+    output:
+        path_to_output_loom="data/raw/joined_matrix.loom",
+    resources:
+        slurm_partition="shared",
+        runtime=600,# 10 hours
+        mem_mb=45_000,# 45 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_cell_annotations {input.path_to_cell_annotations} \
+            --path_to_clinical_data {input.path_to_clinical_data} \
+            --path_to_matrices {input.path_to_matrices} \
+            --path_to_output_loom {output.path_to_output_loom}
+        """
+
+rule subsample_to_NCI_and_AD:
+    input:
+        path_to_script="src/2_subsample_to_NCI_and_AD.py",
+
+        path_to_joined_loom="data/raw/joined_matrix.loom",
+    output:
+        path_to_subsampled_loom="data/raw/joined_matrix_subsampled.loom",
+    params:
+        chunk_size=4096,
+    resources:
+        slurm_partition="shared",
+        runtime=900,# 15 hours
+        mem_mb=45_000,# 45 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_joined_loom {input.path_to_joined_loom} \
+            --path_to_subsampled_loom {output.path_to_subsampled_loom} \
+            --chunk_size {params.chunk_size}
+        """
+
+rule join_duplicate_genes_coarse:
+    input:
+        path_to_script="src/3_join_duplicate_genes.py",
+
+        path_to_joined_loom="data/raw/joined_matrix_subsampled.loom"
+    output:
+        path_to_collapsed_duplicate_genes_loom="data/processed/joined_matrix_subsampled.collapsed_duplicate_genes.loom",
+    params:
+        chunk_size_to_use=4096,
+    resources:
+        slurm_partition="shared",
+        runtime=720,# 12 hours
+        mem_mb=45_000,# 45 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_joined_loom {input.path_to_joined_loom} \
+            --path_to_collapsed_duplicate_genes_loom {output.path_to_collapsed_duplicate_genes_loom} \
+            --chunk_size {params.chunk_size_to_use}
+        """
+
+
+rule run_normalize_rosmap_coarse:
+    input:
+        path_to_script="src/4_normalize_rosmap.py",
+
+        path_to_collapsed_duplicate_genes_loom="data/processed/joined_matrix_subsampled.collapsed_duplicate_genes.loom",
+    output:
+        path_to_cell_wise_normalized_loom="data/processed/coarse/joined_matrix_subsampled_refined_annotation.cell_wise_normalized.loom",
+        path_to_subject_wise_normalized_loom="data/processed/coarse/joined_matrix_subsampled_refined_annotation.subject_wise_normalized.loom",
+    params:
+        chunk_size_to_use=4096,
+    resources:
+        slurm_partition="shared",
+        runtime=420,# 7 hours
+        mem_mb=6_000  # 6 GB of memory
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_collapsed_duplicate_genes_loom {input.path_to_collapsed_duplicate_genes_loom} \
+            --path_to_cell_wise_normalized_loom {output.path_to_cell_wise_normalized_loom} \
+            --path_to_subject_wise_normalized_loom {output.path_to_subject_wise_normalized_loom} \
+            --chunk_size_to_use {params.chunk_size_to_use}
+        """
+
+rule run_rosmap_coarse:
+    input:
+        path_to_script="src/5_run_rosmap.py",
+
+        path_to_subject_wise_normalized_loom="data/processed/coarse/joined_matrix_subsampled_refined_annotation.subject_wise_normalized.loom",
+    output:
+        path_to_mnc_cell_type_no_mask="results/coarse/mnc_cell_type_no_mask.pkl",
+        path_to_mnc_cell_type="results/coarse/mnc_cell_type.pkl",
+        path_to_mnc_grouping_by_no_mask="results/coarse/mnc_grouping_by_no_mask.pkl",
+        path_to_mnc_grouping_by="results/coarse/mnc_grouping_by.pkl",
+        path_to_wasserstein_cell_type="results/coarse/wasserstein_cell_type.pkl",
+        path_to_wasserstein_grouping_by="results/coarse/wasserstein_grouping_by.pkl",
+        path_to_timings="results/coarse/timings.pkl",
+    params:
+        chunk_size_to_use=4096,
+        n_processes_to_use=8,
+        min_n_cells_threshold_to_use=10,
+        significance_tests="KS Anderson CVM MannWhitneyU",
+    resources:
+        slurm_partition="shared",
+        runtime=2880,# 48 hours
+        mem_mb=7_000,# 7 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_subject_wise_normalized_loom {input.path_to_subject_wise_normalized_loom} \
+            --path_to_mnc_cell_type_no_mask {output.path_to_mnc_cell_type_no_mask} \
+            --path_to_mnc_cell_type {output.path_to_mnc_cell_type} \
+            --path_to_mnc_grouping_by_no_mask {output.path_to_mnc_grouping_by_no_mask} \
+            --path_to_mnc_grouping_by {output.path_to_mnc_grouping_by} \
+            --path_to_wasserstein_cell_type {output.path_to_wasserstein_cell_type} \
+            --path_to_wasserstein_grouping_by {output.path_to_wasserstein_grouping_by} \
+            --path_to_timings {output.path_to_timings} \
+            --chunk_size_to_use {params.chunk_size_to_use} \
+            --n_processes_to_use {params.n_processes_to_use} \
+            --min_n_cells_threshold_to_use {params.min_n_cells_threshold_to_use} \
+            --significance_tests {params.significance_tests}
+        """
+
+rule plot_clinical_data:
+    input:
+        path_to_script="src/a_plot_clinical_data.py",
+
+        path_to_clinical_data="data/raw/ROSMAP_clinical.csv",
+        path_to_437_cell_type_annotations="data/raw/cell-annotation.n437.csv",
+    output:
+        path_to_output_figure="results/figs/clinical_data_plot.pdf",
+    params:
+        width_in_cm=5,
+        height_in_cm=5,
+    resources:
+        slurm_partition="shared",
+        runtime=5,# 30 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_clinical_data {input.path_to_clinical_data} \
+            --path_to_437_cell_type_annotations {input.path_to_437_cell_type_annotations} \
+            --path_to_output_figure {output.path_to_output_figure} \
+            --width_in_cm {params.width_in_cm} \
+            --height_in_cm {params.height_in_cm}
+        """
+
+rule plot_p_value_circle_plots_coarse:
+    input:
+        path_to_script="src/b_plot_mnc_coarse_p_value_circle_plot.py",
+
+        path_to_mnc_object="results/coarse/mnc_cell_type.pkl"
+    output:
+        path_to_p_value_circle_plot_png="results/figs/coarse/{test}/png/p_value_circle_plot.png",
+        path_to_p_value_legend_png="results/figs/coarse/{test}/png/p_value_legend.png",
+        path_to_p_value_arrow_legend_png="results/figs/coarse/{test}/png/p_value_arrow_legend.png",
+        path_to_p_value_circle_plot_pdf="results/figs/coarse/{test}/pdf/p_value_circle_plot.pdf",
+        path_to_p_value_legend_pdf="results/figs/coarse/{test}/pdf/p_value_legend.pdf",
+        path_to_p_value_arrow_legend_pdf="results/figs/coarse/{test}/pdf/p_value_arrow_legend.pdf",
+    params:
+        statistical_test="{test}",
+
+        width_in_cm_main=7,
+        height_in_cm_main=7,
+
+        width_in_cm_legend_cell_type=7,
+        height_in_cm_legend_cell_type=3,
+
+        width_in_cm_legend_arrow=3,
+        height_in_cm_legend_arrow=1.5,
+    resources:
+        slurm_partition="shared",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_p_value_circle_plot_png {output.path_to_p_value_circle_plot_png} \
+            --path_to_p_value_legend_png {output.path_to_p_value_legend_png} \
+            --path_to_p_value_arrow_legend_png {output.path_to_p_value_arrow_legend_png} \
+            --path_to_p_value_circle_plot_pdf {output.path_to_p_value_circle_plot_pdf} \
+            --path_to_p_value_legend_pdf {output.path_to_p_value_legend_pdf} \
+            --path_to_p_value_arrow_legend_pdf {output.path_to_p_value_arrow_legend_pdf} \
+            --statistical_test {params.statistical_test} \
+            --width_in_cm_main {params.width_in_cm_main} \
+            --height_in_cm_main {params.height_in_cm_main} \
+            --width_in_cm_legend_cell_type {params.width_in_cm_legend_cell_type}
+            --height_in_cm_legend_cell_type {params.height_in_cm_legend_cell_type} \
+            --width_in_cm_legend_arrow {params.width_in_cm_legend_arrow} \
+            --height_in_cm_legend_arrow {params.height_in_cm_legend_arrow}
+        """
+
+rule plot_wasserstein_circle_plots_coarse:
+    input:
+        path_to_script="src/c_plot_mnc_coarse_wasserstein_circle_plots.py",
+
+        path_to_wasserstein_object="results/coarse/wasserstein_cell_type.pkl"
+    output:
+        path_to_wasserstein_circle_plot_png="results/figs/coarse/wasserstein/png/wasserstein_circle_plot.png",
+        path_to_wasserstein_legend_png="results/figs/coarse/wasserstein/png/wasserstein_legend.png",
+        path_to_wasserstein_arrow_legend_png="results/figs/coarse/wasserstein/png/wasserstein_arrow_legend.png",
+        path_to_wasserstein_circle_plot_pdf="results/figs/coarse/wasserstein/pdf/wasserstein_circle_plot.pdf",
+        path_to_wasserstein_legend_pdf="results/figs/coarse/wasserstein/pdf/wasserstein_legend.pdf",
+        path_to_wasserstein_arrow_legend_pdf="results/figs/coarse/wasserstein/pdf/wasserstein_arrow_legend.pdf",
+    params:
+        statistical_test="KS",
+
+        width_in_cm_main=7,
+        height_in_cm_main=7,
+
+        width_in_cm_legend_cell_type=7,
+        height_in_cm_legend_cell_type=7,
+
+        width_in_cm_legend_arrow=3,
+        height_in_cm_legend_arrow=1.5,
+    resources:
+        slurm_partition="shared",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_wasserstein_object {input.path_to_wasserstein_object} \
+            --path_to_wasserstein_circle_plot_png {output.path_to_wasserstein_circle_plot_png} \
+            --path_to_wasserstein_legend_png {output.path_to_wasserstein_legend_png} \
+            --path_to_wasserstein_arrow_legend_png {output.path_to_wasserstein_arrow_legend_png} \
+            --path_to_wasserstein_circle_plot_pdf {output.path_to_wasserstein_circle_plot_pdf} \
+            --path_to_wasserstein_legend_pdf {output.path_to_wasserstein_legend_pdf} \
+            --path_to_wasserstein_arrow_legend_pdf {output.path_to_wasserstein_arrow_legend_pdf} \
+            --statistical_test {params.statistical_test} \
+            --width_in_cm_main {params.width_in_cm_main} \
+            --height_in_cm_main {params.height_in_cm_main} \
+            --width_in_cm_legend_cell_type {params.width_in_cm_legend_cell_type} \
+            --height_in_cm_legend_cell_type {params.height_in_cm_legend_cell_type} \
+            --width_in_cm_legend_arrow {params.width_in_cm_legend_arrow} \
+            --height_in_cm_legend_arrow {params.height_in_cm_legend_arrow}
+        """
