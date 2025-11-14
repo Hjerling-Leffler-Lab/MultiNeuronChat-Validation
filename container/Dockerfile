@@ -1,7 +1,7 @@
 # ========= Base with micromamba =========
 FROM mambaorg/micromamba:1.5.10
 LABEL authors="Gianluca Volkmer <gianluca.volkmer@ki.se>"
-LABEL version=0.9
+LABEL version=1.0
 
 # Ensure micromamba env is active in subsequent RUN/CMD/ENTRYPOINT
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
