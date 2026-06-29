@@ -8,6 +8,12 @@ PROPORTIONS = config["proportions"]
 SEXES = config.get("sexes", ["f", "m"])
 N_DATASETS = int(config.get("n_datasets", 10))
 
+# Population-size (donor-count) benchmark — see config.yaml.
+N_DONORS_SWEEP = config.get("n_donors_sweep", [2, 3, 5, 8, 10, 20])
+N_SWEEP_CASES = config.get("n_sweep_cases", ["CASE_0.5", "CASE_1"])
+N_SWEEP_PROPORTION = config.get("n_sweep_proportion", 1.0)
+N_SWEEP_MEAN_TYPES = config.get("n_sweep_mean_types", ["mean", "tri_mean"])
+
 rule run_all:
     input:
         expand(
@@ -226,6 +232,25 @@ rule plot_all:
         # path_to_legend="results/figs/umap/original_vs_simulated/legend.pdf",
         # path_to_umap_all_original="results/figs/umap/original_vs_simulated/umap_original.png",
         # path_to_umap_all_simulated="results/figs/umap/original_vs_simulated/umap_simulated.png"
+
+rule run_n_sweep:
+    input:
+        expand(
+            f"results/MNC_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
+            mean_type=N_SWEEP_MEAN_TYPES,
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=N_SWEEP_CASES,
+            n_donors=N_DONORS_SWEEP,
+            dataset_index=range(0, N_DATASETS),
+        ),
+
+rule plot_n_sweep:
+    input:
+        expand(
+            "results/figs/pr_auc_vs_n_donors/{case}.pdf",
+            case=N_SWEEP_CASES,
+        ),
+        "results/tables/T5_pr_auc_vs_n_donors.xlsx",
 
 rule plot_precision_recall_plots:
     input:
@@ -1305,7 +1330,7 @@ rule run_MultiNeuronChat:
         runtime=720,              # 12 hours
         mem_mb=8_000,            # 8 GB
     shell:
-        """ 
+        """
             python {input.path_to_script} \
             --path_to_subject_wise_max_normalized_loom {input.path_to_subject_wise_max_normalized_loom} \
             --path_to_mnc_output_file {output.path_to_mnc_output_file} \
@@ -1315,3 +1340,256 @@ rule run_MultiNeuronChat:
             --trim_mean_fraction {params.trim_mean_fraction} \
             --n_processes {params.n_processes}
         """
+
+############ START OF POPULATION-SIZE (DONOR-COUNT) BENCHMARK RULES ############
+
+# Parallel branch of combine -> normalize -> MNC -> PR-AUC that sweeps the number of donors
+# instead of the proportion of affected donors. It reuses the same simulated patient pool
+# (no SPARSim re-run): cohort size is the `--n_samples_per_group_and_sex` argument of script 5,
+# which sub-samples without replacement. proportion is pinned to N_SWEEP_PROPORTION.
+
+rule combine_SPARSim_datasets_n_sweep:
+    input:
+        case_looms = lambda wildcards: expand(
+            f"data/simulated_patients/updated_version/{{case}}/{{sex}}/{{case}}_{{i}}.loom",
+            case=[wildcards.case],
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+        unperturbed_case_looms = expand(
+            f"data/simulated_patients/updated_version/CASE_0/{{sex}}/CASE_0_{{i}}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+        control_looms = expand(
+            f"data/simulated_patients/updated_version/CTRL_0/{{sex}}/CTRL_0_{{i}}.loom",
+            sex=SEXES,
+            i=range(1, int(config.get("n_people_to_simulate", 60)) + 1),
+        ),
+
+        path_to_script="src/5_combine_SPARSim_dataset.py",
+
+    output:
+        path_to_output_loom=f"data/simulated_datasets_n_sweep/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.loom",
+        path_to_patient_meta_output_file=f"data/simulated_meta_n_sweep/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}_meta.csv",
+    params:
+        path_to_case=lambda wildcards: f"data/simulated_patients/updated_version/{wildcards.case}",
+        path_to_non_perturbed_case_folder = f"data/simulated_patients/updated_version/CASE_0/",
+        path_to_ctrl_folder = f"data/simulated_patients/updated_version/CTRL_0/",
+
+        proportion_of_affected_donors=N_SWEEP_PROPORTION,
+        dataset_index=lambda wildcards: wildcards.dataset_index,
+        n_samples_per_group_and_sex=lambda wildcards: wildcards.n_donors,
+    wildcard_constraints:
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        n_donors="[0-9]+",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition = "shared",
+        runtime = 120,              # 2 hours (small cohorts)
+        mem_mb = 12_000,            # 12 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_case {params.path_to_case} \
+        --path_to_non_perturbed_case_folder {params.path_to_non_perturbed_case_folder} \
+        --path_to_ctrl_folder {params.path_to_ctrl_folder} \
+        --path_to_output_loom {output.path_to_output_loom} \
+        --path_to_patient_meta_output_file {output.path_to_patient_meta_output_file} \
+        --proportion_of_affected_donors {params.proportion_of_affected_donors} \
+        --dataset_index {params.dataset_index} \
+        --n_samples_per_group_and_sex {params.n_samples_per_group_and_sex}
+        """
+
+rule normalize_datasets_n_sweep:
+    input:
+        path_to_script = "src/6_run_MultiNeuronChat_normalization.py",
+        path_to_dataset_to_normalize=f"data/simulated_datasets_n_sweep/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.loom",
+    output:
+        path_to_subject_wise_max_normalized_loom=f"data/normalized_data_n_sweep/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.loom",
+    params:
+        path_to_cell_wise_log_normalized_loom="/tmp/cell_wise_log_normalized_n_sweep/{case}/{n_donors}/{case}_{n_donors}_{dataset_index}.loom",
+
+        chunk_size=8192,
+    wildcard_constraints:
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        n_donors="[0-9]+",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition = "shared",
+        runtime=240,              # 4 hours (small cohorts)
+        mem_mb=8_000,            # 8 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_dataset_to_normalize {input.path_to_dataset_to_normalize} \
+        --path_to_cell_wise_log_normalized_loom {params.path_to_cell_wise_log_normalized_loom} \
+        --path_to_subject_wise_max_normalized_loom {output.path_to_subject_wise_max_normalized_loom} \
+        --chunk_size {params.chunk_size}
+        """
+
+rule run_MultiNeuronChat_n_sweep:
+    input:
+        path_to_script="src/7_run_MultiNeuronChat.py",
+        path_to_subject_wise_max_normalized_loom=f"data/normalized_data_n_sweep/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.loom",
+    output:
+        path_to_mnc_output_file=f"results/MNC_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
+        path_to_wasserstein_dict_file=f"results/Wasserstein_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
+        path_to_timing_dict_file=f"results/Timing_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
+    params:
+        mean_type=lambda wildcards: wildcards.mean_type,
+        trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+        n_processes=8
+    wildcard_constraints:
+        mean_type="mean|tri_mean|trim_mean",
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        n_donors="[0-9]+",
+        dataset_index="[0-9]+",
+    resources:
+        slurm_partition="shared",
+        runtime=360,              # 6 hours (small cohorts)
+        mem_mb=8_000,            # 8 GB
+    shell:
+        """
+            python {input.path_to_script} \
+            --path_to_subject_wise_max_normalized_loom {input.path_to_subject_wise_max_normalized_loom} \
+            --path_to_mnc_output_file {output.path_to_mnc_output_file} \
+            --path_to_wasserstein_dict_file {output.path_to_wasserstein_dict_file} \
+            --path_to_timing_dict_file {output.path_to_timing_dict_file} \
+            --mean_type {params.mean_type} \
+            --trim_mean_fraction {params.trim_mean_fraction} \
+            --n_processes {params.n_processes}
+        """
+
+rule get_pr_curve_data_n_sweep:
+    input:
+        path_to_script = "src/plotting/plot_pr_curves_a.py",
+
+        path_to_mnc_files = expand(
+            "results/MNC_results_n_sweep/{mean_type}_{trim_mean_fraction}/{case}/{n_donors}/{case}_{n_donors}_{dataset_index}.pkl",
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            case=lambda wildcards: wildcards.case,
+            n_donors=lambda wildcards: wildcards.n_donors,
+            dataset_index=range(0, N_DATASETS),
+        ),
+        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways.csv"
+    output:
+        path_to_curves_output='results/figs/pr_curves_n_sweep/summary_data/curves/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
+        path_to_pr_aucs_output='results/figs/pr_curves_n_sweep/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
+        path_to_error_bands_dict='results/figs/pr_curves_n_sweep/summary_data/error_bands/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
+    params:
+        statistical_tests="KS Anderson CVM MannWhitneyU",
+    wildcard_constraints:
+        mean_type="mean|tri_mean|trim_mean",
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        n_donors="[0-9]+",
+    resources:
+        slurm_partition = "shared",
+        runtime = 60,   # 1 hour
+        mem_mb = 2_000,  # 2 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --paths_to_mnc_files {input.path_to_mnc_files} \
+        --path_to_expected_perturbations {input.path_to_expected_perturbations} \
+        --path_to_curves_output {output.path_to_curves_output} \
+        --path_to_pr_aucs_output {output.path_to_pr_aucs_output} \
+        --path_to_error_bands_dict {output.path_to_error_bands_dict} \
+        --statistical_tests {params.statistical_tests}
+        """
+
+rule plot_pr_aucs_vs_n_donors:
+    input:
+        path_to_script='src/plotting/plot_pr_aucs_vs_n_donors.py',
+
+        path_to_curves_output=expand(
+            'results/figs/pr_curves_n_sweep/summary_data/curves/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
+            mean_type=N_SWEEP_MEAN_TYPES,
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=lambda wildcards: wildcards.case,
+            n_donors=N_DONORS_SWEEP,
+        ),
+        path_to_pr_aucs_output=expand(
+            'results/figs/pr_curves_n_sweep/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
+            mean_type=N_SWEEP_MEAN_TYPES,
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=lambda wildcards: wildcards.case,
+            n_donors=N_DONORS_SWEEP,
+        ),
+        path_to_error_bands_dict=expand(
+            'results/figs/pr_curves_n_sweep/summary_data/error_bands/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
+            mean_type=N_SWEEP_MEAN_TYPES,
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=lambda wildcards: wildcards.case,
+            n_donors=N_DONORS_SWEEP,
+        ),
+    output:
+        path_to_output_figure='results/figs/pr_auc_vs_n_donors/{case}.pdf',
+    params:
+        path_to_curves='results/figs/pr_curves_n_sweep/summary_data/curves/',
+        path_to_pr_aucs='results/figs/pr_curves_n_sweep/summary_data/pr_aucs/',
+        path_to_error_bands_dict='results/figs/pr_curves_n_sweep/summary_data/error_bands/',
+
+        mean_types=" ".join([f"{m}_0" for m in N_SWEEP_MEAN_TYPES]),
+        n_donors=" ".join(map(str, N_DONORS_SWEEP)),
+
+        width_in_cm=14,
+        height_in_cm=8,
+        font_size=8,
+    wildcard_constraints:
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+    resources:
+        slurm_partition="shared",
+        runtime=5,  # 5 min
+        mem_mb=800,  # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_curves {params.path_to_curves} \
+        --path_to_pr_aucs {params.path_to_pr_aucs} \
+        --path_to_error_bands_dict {params.path_to_error_bands_dict} \
+        --path_to_output_figure {output.path_to_output_figure} \
+        --case {wildcards.case} \
+        --mean_types {params.mean_types} \
+        --n_donors {params.n_donors} \
+        --width_in_cm {params.width_in_cm} \
+        --height_in_cm {params.height_in_cm} \
+        --font_size {params.font_size}
+        """
+
+rule create_pr_auc_vs_n_donors_table:
+    input:
+        path_to_script='src/tables/create_pr_auc_vs_n_donors_table.py',
+
+        path_to_pr_aucs_outputs=expand(
+            'results/figs/pr_curves_n_sweep/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
+            mean_type=N_SWEEP_MEAN_TYPES,
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=N_SWEEP_CASES,
+            n_donors=N_DONORS_SWEEP,
+        ),
+    output:
+        path_to_pr_auc_summary_table_excel="results/tables/T5_pr_auc_vs_n_donors.xlsx",
+    params:
+        path_to_summary_pkls="results/figs/pr_curves_n_sweep/summary_data/pr_aucs/",
+        mean_types=" ".join([f"{m}_0" for m in N_SWEEP_MEAN_TYPES]),
+        cases=" ".join(N_SWEEP_CASES),
+        n_donors=" ".join(map(str, N_DONORS_SWEEP)),
+    resources:
+        slurm_partition = "shared",
+        runtime = 10,               # 10 min
+        mem_mb = 800,             # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_summary_pkls {params.path_to_summary_pkls} \
+        --path_to_pr_auc_summary_table_excel {output.path_to_pr_auc_summary_table_excel} \
+        --mean_types {params.mean_types} \
+        --cases {params.cases} \
+        --n_donors {params.n_donors}
+        """
+
+############ END OF POPULATION-SIZE (DONOR-COUNT) BENCHMARK RULES ############
