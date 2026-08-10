@@ -284,7 +284,7 @@ rule plot_precision_recall_plots:
         case = "CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
         statistical_test="KS|Anderson|CVM|MannWhitneyU",
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=60,                 # 1 hours
         mem_mb=4_000,               # 4 GB
     shell:
@@ -342,7 +342,7 @@ rule create_summary_statistics:
         proportion="0.1|0.3|0.5|0.8|1.0",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=240,                # 4 hours
         mem_mb=2_000,               # 2 GB
     shell:
@@ -384,7 +384,7 @@ rule get_pr_curve_data:
         proportion="0.1|0.3|0.5|0.8|1.0",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 240,  # 4 hours
         mem_mb = 2_000,  # 2 GB
     shell:
@@ -426,7 +426,7 @@ rule plot_pr_curves_and_auc:
         proportion="0.1|0.3|0.5|0.8|1.0",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 15,               # 15 min
         mem_mb = 800,               # 800 MB
     shell:
@@ -511,7 +511,7 @@ rule plot_pr_auc_comparision_of_mean_types:
         case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
         proportion="0.1|0.3|0.5|0.8|1.0",
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=5,# 5 min
         mem_mb=800,# 800 MB
     shell:
@@ -561,7 +561,7 @@ rule plot_timings:
 
         fontsize=8,
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 5,  # 5 min
         mem_mb = 800,  # 800 MB
     shell:
@@ -603,7 +603,7 @@ rule create_timing_result_summary_files:
     params:
         path_to_timing_results = 'results/Timing_results/',
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 10,               # 10 min
         mem_mb = 800,               # 800 MB
     shell:
@@ -622,7 +622,7 @@ rule create_performed_perturbations_table:
     output:
         path_to_gene_perturbations_excel="results/tables/T2_perturbations.xlsx",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 5,               # 5 min
         mem_mb = 800,             # 800 MB
     shell:
@@ -655,7 +655,7 @@ rule create_pr_auc_summary_table:
     params:
         path_to_summary_pkls="results/figs/pr_curves/summary_data/pr_aucs/"
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 10,               # 10 min
         mem_mb = 800,             # 800 MB
     shell:
@@ -704,7 +704,7 @@ rule plot_wasserstein_vs_p_values:
         case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
         proportion="0.1|0.3|0.5|0.8|1.0",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 30,               # 30 min
         mem_mb = 2_000,             # 2 GB
     shell:
@@ -736,7 +736,7 @@ rule fit_umap:
         path_to_simulated_data_umap = "data/umap/simulated.loom",
         path_to_combined_umap = "data/umap/combined.loom",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 720,               # 12h
         mem_mb = 64_000,             # 16 GB
     shell:
@@ -767,7 +767,7 @@ rule plot_umap_only_simulated:
 
         font_size=8
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 60,                # 1h
         mem_mb = 16_000,             # 16 GB
     shell:
@@ -802,7 +802,7 @@ rule plot_umap_original_vs_simulated:
 
         font_size=8
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 60,                # 1h
         mem_mb = 16_000,             # 16 GB
     shell:
@@ -834,7 +834,7 @@ rule normalize_for_neuronchat:
         proportion="0.1|0.3|0.5|0.8|1.0",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime=720,# 12 hours
         mem_mb=16_000,   # 8 GB
     shell:
@@ -862,7 +862,7 @@ rule run_neuronchat:
         proportion = "0.1|0.3|0.5|0.8|1.0",
         dataset_index = "[0-9]+",
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=360,# 6 hours
         mem_mb=16_000,# 16 GB
     shell:
@@ -911,7 +911,7 @@ rule run_neuronchat_comparison:
         proportion="0.1|0.3|0.5|0.8|1.0",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 10,           # 10 minutes (adjust as needed)
         mem_mb = 16_000,           # 16 GB (adjust as needed)
     shell:
@@ -947,7 +947,7 @@ rule extract_ligands_and_targets:
         path_to_output_perturbations_to_perform="data/simulation/perturbations_to_perform.csv",
         path_to_output_expected_perturbed_pathways="data/simulation/expected_perturbed_pathways.csv",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 480,               # 8 hours
         mem_mb= 64_000,              # 64 GB
     shell:
@@ -969,7 +969,7 @@ rule extract_genes_to_perturb_from_perturbations_to_perform:
     output:
         path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 240,              # 4 hours
         mem_mb = 16_000,            # 16 GB
     shell:
@@ -1006,7 +1006,7 @@ rule simulate_SPARSim_control_group:
         # Attention: This path should be the same as the output path
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 1440,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
@@ -1043,7 +1043,7 @@ rule simulate_SPARSim_case_group_0_3:
         # Attention: This path should be the same as the output path
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 1440,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
@@ -1080,7 +1080,7 @@ rule simulate_SPARSim_case_group_0_5:
         # Attention: This path should be the same as the output path
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 1440,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
@@ -1117,7 +1117,7 @@ rule simulate_SPARSim_case_group_1:
         # Attention: This path should be the same as the output path
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 1440,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
@@ -1154,7 +1154,7 @@ rule simulate_SPARSim_case_group_1_5:
         # Attention: This path should be the same as the output path
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 1440,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
@@ -1191,7 +1191,7 @@ rule simulate_SPARSim_case_group_0:
         # Attention: This path should be the same as the output path
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 1440,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
@@ -1216,7 +1216,7 @@ rule update_loom_version:
     output:
         updated="data/simulated_patients/updated_version/{case}/{sex}/{case}_{i}.loom"
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 15,              # 15 minutes
         mem_mb = 4_000,            # 4 GB
     shell:
@@ -1263,7 +1263,7 @@ rule combine_SPARSim_datasets:
         proportion="0.1|0.3|0.5|0.8|1.0",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 480,              # 8 hour
         mem_mb = 12_000,            # 12 GB
     shell:
@@ -1294,7 +1294,7 @@ rule normalize_datasets:
         proportion="0.1|0.3|0.5|0.8|1.0",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime=720,              # 12 hours
         mem_mb=8_000,            # 8 GB
     shell:
@@ -1326,7 +1326,7 @@ rule run_MultiNeuronChat:
         dataset_index="[0-9]+",
     resources:
         # TODO adjust memory and run-time
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=720,              # 12 hours
         mem_mb=8_000,            # 8 GB
     shell:
@@ -1385,7 +1385,7 @@ rule combine_SPARSim_datasets_n_sweep:
         n_donors="[0-9]+",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 120,              # 2 hours (small cohorts)
         mem_mb = 12_000,            # 12 GB
     shell:
@@ -1416,7 +1416,7 @@ rule normalize_datasets_n_sweep:
         n_donors="[0-9]+",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime=240,              # 4 hours (small cohorts)
         mem_mb=8_000,            # 8 GB
     shell:
@@ -1447,7 +1447,7 @@ rule run_MultiNeuronChat_n_sweep:
         n_donors="[0-9]+",
         dataset_index="[0-9]+",
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=360,              # 6 hours (small cohorts)
         mem_mb=8_000,            # 8 GB
     shell:
@@ -1487,7 +1487,7 @@ rule get_pr_curve_data_n_sweep:
         case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
         n_donors="[0-9]+",
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 60,   # 1 hour
         mem_mb = 2_000,  # 2 GB
     shell:
@@ -1542,7 +1542,7 @@ rule plot_pr_aucs_vs_n_donors:
     wildcard_constraints:
         case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=5,  # 5 min
         mem_mb=800,  # 800 MB
     shell:
@@ -1579,7 +1579,7 @@ rule create_pr_auc_vs_n_donors_table:
         cases=" ".join(N_SWEEP_CASES),
         n_donors=" ".join(map(str, N_DONORS_SWEEP)),
     resources:
-        slurm_partition = "shared",
+        slurm_partition = "cpu",
         runtime = 10,               # 10 min
         mem_mb = 800,             # 800 MB
     shell:

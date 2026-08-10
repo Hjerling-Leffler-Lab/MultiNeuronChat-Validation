@@ -49,7 +49,7 @@ rule join_rosmap_data:
     output:
         path_to_output_loom="data/raw/joined_matrix.loom",
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=600,# 10 hours
         mem_mb=45_000,# 45 GB
     shell:
@@ -71,7 +71,7 @@ rule subsample_to_NCI_and_AD:
     params:
         chunk_size=4096,
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=900,# 15 hours
         mem_mb=45_000,# 45 GB
     shell:
@@ -92,7 +92,7 @@ rule join_duplicate_genes_coarse:
     params:
         chunk_size_to_use=4096,
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=720,# 12 hours
         mem_mb=45_000,# 45 GB
     shell:
@@ -115,7 +115,7 @@ rule run_normalize_rosmap_coarse:
     params:
         chunk_size_to_use=4096,
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=420,# 7 hours
         mem_mb=6_000  # 6 GB of memory
     shell:
@@ -146,7 +146,7 @@ rule run_rosmap_coarse:
         min_n_cells_threshold_to_use=10,
         significance_tests="KS Anderson CVM MannWhitneyU",
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=2880,# 48 hours
         mem_mb=7_000,# 7 GB
     shell:
@@ -178,7 +178,7 @@ rule plot_clinical_data:
         width_in_cm=5,
         height_in_cm=5,
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=5,# 30 minutes
         mem_mb=4_000,# 4 GB
     shell:
@@ -215,7 +215,7 @@ rule plot_p_value_circle_plots_coarse:
         width_in_cm_legend_arrow=3,
         height_in_cm_legend_arrow=1.5,
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=5,# 5 minutes
         mem_mb=4_000,# 4 GB
     shell:
@@ -261,7 +261,7 @@ rule plot_wasserstein_circle_plots_coarse:
         width_in_cm_legend_arrow=3,
         height_in_cm_legend_arrow=1.5,
     resources:
-        slurm_partition="shared",
+        slurm_partition="cpu",
         runtime=5,# 5 minutes
         mem_mb=4_000,# 4 GB
     shell:
