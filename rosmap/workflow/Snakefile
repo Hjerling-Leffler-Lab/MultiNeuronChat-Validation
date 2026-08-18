@@ -1,4 +1,4 @@
-container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:latest"
+container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.8.18.dev0"
 
 statistical_tests = ["KS"]
 

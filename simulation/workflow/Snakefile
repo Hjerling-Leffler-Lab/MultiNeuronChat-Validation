@@ -1,6 +1,6 @@
 configfile: "workflow/config.yaml"
 
-container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:latest"
+container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.8.18.dev0"
 
 CASES = config["cases"]
 MEAN_TYPES = config["mean_types"]
@@ -1007,7 +1007,7 @@ rule simulate_SPARSim_control_group:
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
         slurm_partition = "cpu",
-        runtime = 1440,             # 24 hours
+        runtime = 4320,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
         """
@@ -1044,7 +1044,7 @@ rule simulate_SPARSim_case_group_0_3:
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
         slurm_partition = "cpu",
-        runtime = 1440,             # 24 hours
+        runtime = 4320,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
         """
@@ -1081,7 +1081,7 @@ rule simulate_SPARSim_case_group_0_5:
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
         slurm_partition = "cpu",
-        runtime = 1440,             # 24 hours
+        runtime = 4320,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
         """
@@ -1118,7 +1118,7 @@ rule simulate_SPARSim_case_group_1:
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
         slurm_partition = "cpu",
-        runtime = 1440,             # 24 hours
+        runtime = 4320,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
         """
@@ -1155,7 +1155,7 @@ rule simulate_SPARSim_case_group_1_5:
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
         slurm_partition = "cpu",
-        runtime = 1440,             # 24 hours
+        runtime = 4320,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
         """
@@ -1192,7 +1192,7 @@ rule simulate_SPARSim_case_group_0:
         path_to_datasets_loom_folder="data/simulated_patients/old_version/",
     resources:
         slurm_partition = "cpu",
-        runtime = 1440,             # 24 hours
+        runtime = 4320,             # 24 hours
         mem_mb = 15_000,            # 15 GB
     shell:
         """

@@ -1,7 +1,7 @@
 # ========= Base with micromamba =========
 FROM mambaorg/micromamba:1.5.10
 LABEL authors="Gianluca Volkmer <gianluca.volkmer@ki.se>"
-LABEL version=1.0
+LABEL version=2026.8.18.dev0
 
 # Ensure micromamba env is active in subsequent RUN/CMD/ENTRYPOINT
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
@@ -56,7 +56,7 @@ RUN micromamba install -y -n base -c conda-forge -c bioconda \
   && ln -sf /opt/conda/bin/R        /usr/local/bin/R \
   && ln -sf /opt/conda/bin/Rscript  /usr/local/bin/Rscript
 
-RUN micromamba run -n base python -m pip install multineuronchat
+RUN micromamba run -n base python -m pip install multineuronchat==2026.8.18.dev0
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
