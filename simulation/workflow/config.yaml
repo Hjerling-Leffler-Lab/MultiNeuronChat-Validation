@@ -19,7 +19,7 @@ trim_mean_fractions:
 # n_donors_sweep values are donors PER SEX PER GROUP, sub-sampled without replacement from the
 # existing simulated patient pool (no SPARSim re-run). proportion is pinned to 1.0 so the sweep
 # isolates the effect of cohort size.
-n_donors_sweep: [2, 3, 5, 8, 10, 20]
+n_donors_sweep: [4, 5, 8, 10, 20]
 n_sweep_cases: ["CASE_0.5", "CASE_1"]
 n_sweep_proportion: 1.0
 n_sweep_mean_types: ["mean", "tri_mean"]
