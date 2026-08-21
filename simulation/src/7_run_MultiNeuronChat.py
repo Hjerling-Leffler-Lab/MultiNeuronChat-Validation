@@ -125,7 +125,10 @@ def main():
     for statistical_test in ['KS', 'Anderson', 'CVM', 'MannWhitneyU']:
         start_time_statistical_test = time.time()
 
-        mnc_object.compute_significance(statistical_test=statistical_test)
+        mnc_object.compute_significance(
+            statistical_test=statistical_test,
+            random_state=42,
+        )
 
         end_time_statistical_test = time.time()
         timings[f'significance_{statistical_test}'] = (
