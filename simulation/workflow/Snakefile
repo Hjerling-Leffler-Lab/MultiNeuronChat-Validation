@@ -163,7 +163,7 @@ rule plot_all:
         path_to_timing_result_summary_xlsx='results/Timing_results/T3_MNC_Runtime.xlsx',
 
         # Table for performed perturbations
-        path_to_gene_perturbations_excel="results/tables/performed_perturbations_table.xlsx",
+        path_to_gene_perturbations_excel="results/tables/T2_perturbations.xlsx",
         
         # Path to PR AUCs summary table
         path_to_pr_auc_summary_table_excel="results/tables/T4_pr_aucs_summary_table.xlsx",
