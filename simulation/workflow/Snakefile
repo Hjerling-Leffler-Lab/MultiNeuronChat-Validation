@@ -1,6 +1,6 @@
 configfile: "workflow/config.yaml"
 
-container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.8.18.dev0"
+container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.9.5.dev0"
 
 CASES = config["cases"]
 MEAN_TYPES = config["mean_types"]

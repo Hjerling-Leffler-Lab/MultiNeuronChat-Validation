@@ -1,7 +1,7 @@
 # ========= Base with micromamba =========
 FROM mambaorg/micromamba:1.5.10
 LABEL authors="Gianluca Volkmer <gianluca.volkmer@ki.se>"
-LABEL version=2026.8.18.dev0
+LABEL version=2026.9.5.dev0
 
 # Ensure micromamba env is active in subsequent RUN/CMD/ENTRYPOINT
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # - Install snakemake, pip, and common build helpers
 
 RUN micromamba install -y -n base -c conda-forge -c bioconda \
-    python=3.12.3 r-base=4.4.3 pip snakemake=9.9.0 anndata scikit-learn scanpy \
+    python=3.12.3 r-base=4.4.3 pip snakemake=9.9.0 anndata scikit-learn scanpy openpyxl \
     r-devtools r-remotes r-tidyverse r-xml2 r-data.table r-rcpp r-cpp11 r-httr r-jsonlite r-r.utils \
     r-igraph r-svglite r-uwot r-hdf5r r-seurat r-ggpubr \
     r-rcurl r-png r-cairo r-viridis r-ggrepel r-gridextra \
