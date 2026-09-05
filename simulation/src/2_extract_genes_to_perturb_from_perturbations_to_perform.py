@@ -113,6 +113,26 @@ def main():
 
     gene_perturbations_to_perform: List[Tuple[str, str, str, bool]] = []
 
+    # ------------------------------------------------------------------------------------
+    # REPRODUCIBILITY WARNING — this section is NOT reproducible across runs.
+    #
+    # The random gene draw below (np.random.choice(list(unique_genes_i))) samples from a
+    # Python `set` that has been converted to a `list`. The iteration/list order of a set of
+    # strings depends on the interpreter's string hash seed (PYTHONHASHSEED), which is
+    # randomized per process by default. As a result, `list(unique_genes_i)` is ordered
+    # differently between runs, so np.random.choice picks a different gene even though numpy
+    # is seeded above (np.random.seed(1_299_709)). This also shifts the subsequent
+    # np.random.choice([True, False]) draw, so the entire gene_perturbations_to_perform.csv
+    # is non-deterministic.
+    #
+    # This bug was found AFTER the manuscript was submitted. To keep the published results
+    # intact, the committed data/simulation/gene_perturbations_to_perform.csv is treated as
+    # the canonical ground truth and must NOT be regenerated. Accordingly, this script has
+    # been removed from the Snakemake pipeline (the corresponding rule
+    # `extract_genes_to_perturb_from_perturbations_to_perform` is commented out in
+    # simulation/workflow/Snakefile). The rest of the pipeline is deterministic given that
+    # committed CSV. The code is kept here, unchanged, for provenance only.
+    # ------------------------------------------------------------------------------------
     for cell_type in cell_type_to_lt_and_genes.keys():
         ligands_or_targets_to_perturb: List[str] = list(cell_type_to_lt_and_genes[cell_type].keys())
 
@@ -139,6 +159,7 @@ def main():
 
             if len(unique_genes_i) == 0:
                 raise ValueError('No unique genes to perturb')
+            # NON-REPRODUCIBLE: list(<set>) order is hash-seed dependent — see warning above.
             gene_to_perturb = np.random.choice(list(unique_genes_i))
             up_down = np.random.choice([True, False])
             gene_perturbations_to_perform.append((cell_type, ligands_or_targets_to_perturb[i], gene_to_perturb, up_down))

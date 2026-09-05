@@ -960,24 +960,34 @@ rule extract_ligands_and_targets:
         {output.path_to_output_expected_perturbed_pathways}
         """
 
-rule extract_genes_to_perturb_from_perturbations_to_perform:
-    input:
-        path_to_script="src/2_extract_genes_to_perturb_from_perturbations_to_perform.py",
-
-        path_to_perturbations_to_perform="data/simulation/perturbations_to_perform.csv",
-
-    output:
-        path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
-    resources:
-        slurm_partition = "cpu",
-        runtime = 240,              # 4 hours
-        mem_mb = 16_000,            # 16 GB
-    shell:
-        """
-        python {input.path_to_script} \
-        --path_to_perturbations_to_perform {input.path_to_perturbations_to_perform} \
-        --path_to_gene_perturbations_to_perform {output.path_to_gene_perturbations_to_perform}
-        """
+# NOTE: This rule is intentionally disabled (commented out) for reproducibility.
+# Script 2 (2_extract_genes_to_perturb_from_perturbations_to_perform.py) draws random
+# genes from Python `set`s converted to `list`s. That set->list ordering depends on the
+# interpreter's string hash seed (PYTHONHASHSEED), so the output is NOT reproducible even
+# though numpy is seeded (see the detailed comment in the script itself).
+# The committed data/simulation/gene_perturbations_to_perform.csv is the canonical, published
+# version used in the manuscript and must NOT be regenerated. With this rule disabled,
+# Snakemake treats that committed CSV as a pre-existing input to the SPARSim rules and leaves
+# it untouched; the rest of the pipeline remains fully reproducible.
+#
+# rule extract_genes_to_perturb_from_perturbations_to_perform:
+#     input:
+#         path_to_script="src/2_extract_genes_to_perturb_from_perturbations_to_perform.py",
+#
+#         path_to_perturbations_to_perform="data/simulation/perturbations_to_perform.csv",
+#
+#     output:
+#         path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
+#     resources:
+#         slurm_partition = "cpu",
+#         runtime = 240,              # 4 hours
+#         mem_mb = 16_000,            # 16 GB
+#     shell:
+#         """
+#         python {input.path_to_script} \
+#         --path_to_perturbations_to_perform {input.path_to_perturbations_to_perform} \
+#         --path_to_gene_perturbations_to_perform {output.path_to_gene_perturbations_to_perform}
+#         """
 
 ############ START OF SIMULATION RULES ############
 
