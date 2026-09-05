@@ -40,11 +40,6 @@ def main():
         required=True,
     )
     parser.add_argument(
-        '--path_to_pr_curves_Anderson_fig',
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
         '--path_to_pr_curves_CVM_fig',
         type=str,
         required=True,
@@ -101,7 +96,6 @@ def main():
     path_to_summary_pr_curves_fig: str = args.path_to_summary_pr_curves_fig
 
     path_to_pr_curves_KS_fig: str = args.path_to_pr_curves_KS_fig
-    path_to_pr_curves_Anderson_fig: str = args.path_to_pr_curves_Anderson_fig
     path_to_pr_curves_CVM_fig: str = args.path_to_pr_curves_CVM_fig
     path_to_pr_curves_MannWhitneyU_fig: str = args.path_to_pr_curves_MannWhitneyU_fig
 
@@ -118,12 +112,11 @@ def main():
 
     curve_label_to_fig_path: dict[str, str] = {
         'KS': path_to_pr_curves_KS_fig,
-        'Anderson': path_to_pr_curves_Anderson_fig,
         'CVM': path_to_pr_curves_CVM_fig,
         'MannWhitneyU': path_to_pr_curves_MannWhitneyU_fig,
     }
 
-    colors = [statistical_test_colors[statistical_test] for statistical_test in ['KS', 'Anderson', 'CVM', 'MannWhitneyU']]
+    colors = [statistical_test_colors[statistical_test] for statistical_test in ['KS', 'CVM', 'MannWhitneyU']]
 
     pr_curves_fig_size = (pr_curves_width_of_figure_in_cm*cm, pr_curves_height_of_figure_in_cm*cm)
     pr_auc_fig_size = (pr_aucs_width_of_figure_in_cm*cm, pr_aucs_height_of_figure_in_cm*cm)
@@ -231,9 +224,7 @@ def main():
         for x in pr_aucs[label]:
             short_label = label
 
-            if label == 'Anderson':
-                short_label = 'And'
-            elif label == 'MannWhitneyU':
+            if label == 'MannWhitneyU':
                 short_label = 'MWU'
 
             pr_df['Method'].append(short_label)
@@ -243,7 +234,7 @@ def main():
 
     bplot = axs.boxplot(
         pr_aucs_values,
-        labels=['KS', 'And', 'CVM', 'MWU'],
+        labels=['KS', 'CVM', 'MWU'],
         patch_artist=True,
         medianprops=dict(color='black')
     )
@@ -266,11 +257,6 @@ def main():
     for label in curve_names:
         pr_aucs[label] = np.array(pr_aucs[label])
 
-    if not np.any(pr_aucs['KS'] - pr_aucs['Anderson']):
-        ks_anderson = 1.0
-    else:
-        ks_anderson = stats.wilcoxon(pr_aucs['KS'], pr_aucs['Anderson'], zero_method='wilcox',
-                                     method=stats.PermutationMethod()).pvalue
     if not np.any(pr_aucs['KS'] - pr_aucs['CVM']):
         ks_cvm = 1.0
     else:
@@ -281,16 +267,6 @@ def main():
     else:
         ks_mannwhitneyu = stats.wilcoxon(pr_aucs['KS'], pr_aucs['MannWhitneyU'], zero_method='wilcox',
                                          method=stats.PermutationMethod()).pvalue
-    if not np.any(pr_aucs['Anderson'] - pr_aucs['CVM']):
-        anderson_cvm = 1.0
-    else:
-        anderson_cvm = stats.wilcoxon(pr_aucs['Anderson'], pr_aucs['CVM'], zero_method='wilcox',
-                                      method=stats.PermutationMethod()).pvalue
-    if not np.any(pr_aucs['Anderson'] - pr_aucs['MannWhitneyU']):
-        anderson_mannwhitneyu = 1.0
-    else:
-        anderson_mannwhitneyu = stats.wilcoxon(pr_aucs['Anderson'], pr_aucs['MannWhitneyU'], zero_method='wilcox',
-                                               method=stats.PermutationMethod()).pvalue
     if not np.any(pr_aucs['CVM'] - pr_aucs['MannWhitneyU']):
         cvm_mannwhitneyu = 1.0
     else:
@@ -298,39 +274,28 @@ def main():
                                           method=stats.PermutationMethod()).pvalue
 
     # if nan set to 1
-    ks_anderson = 1.0 if np.isnan(ks_anderson) else ks_anderson
     ks_cvm = 1.0 if np.isnan(ks_cvm) else ks_cvm
     ks_mannwhitneyu = 1.0 if np.isnan(ks_mannwhitneyu) else ks_mannwhitneyu
-    anderson_cvm = 1.0 if np.isnan(anderson_cvm) else anderson_cvm
-    anderson_mannwhitneyu = 1.0 if np.isnan(anderson_mannwhitneyu) else anderson_mannwhitneyu
     cvm_mannwhitneyu = 1.0 if np.isnan(cvm_mannwhitneyu) else cvm_mannwhitneyu
 
     # adjust p-values for multiple testing
-    [ks_anderson, ks_cvm, ks_mannwhitneyu, anderson_cvm, anderson_mannwhitneyu,
-     cvm_mannwhitneyu] = stats.false_discovery_control(
-        [ks_anderson, ks_cvm, ks_mannwhitneyu, anderson_cvm, anderson_mannwhitneyu, cvm_mannwhitneyu],
+    [ks_cvm, ks_mannwhitneyu, cvm_mannwhitneyu] = stats.false_discovery_control(
+        [ks_cvm, ks_mannwhitneyu, cvm_mannwhitneyu],
         method='bh'
     )
 
-    ks_anderson_text = ['n.s.', '*', '**', '***'][
-        int(ks_anderson < 0.05) + int(ks_anderson < 0.01) + int(ks_anderson < 0.001)]
     ks_cvm_text = ['n.s.', '*', '**', '***'][int(ks_cvm < 0.05) + int(ks_cvm < 0.01) + int(ks_cvm < 0.001)]
     ks_mannwhitneyu_text = ['n.s.', '*', '**', '***'][
         int(ks_mannwhitneyu < 0.05) + int(ks_mannwhitneyu < 0.01) + int(ks_mannwhitneyu < 0.001)]
-    anderson_cvm_text = ['n.s.', '*', '**', '***'][
-        int(anderson_cvm < 0.05) + int(anderson_cvm < 0.01) + int(anderson_cvm < 0.001)]
-    anderson_mannwhitneyu_text = ['n.s.', '*', '**', '***'][
-        int(anderson_mannwhitneyu < 0.05) + int(anderson_mannwhitneyu < 0.01) + int(anderson_mannwhitneyu < 0.001)]
     cvm_mannwhitneyu_text = ['n.s.', '*', '**', '***'][
         int(cvm_mannwhitneyu < 0.05) + int(cvm_mannwhitneyu < 0.01) + int(cvm_mannwhitneyu < 0.001)]
 
-    # get x_tick locations
+    # get x_tick locations (one per test: KS, CVM, MWU)
     x_ticks = axs.get_xticks()
 
     x1 = x_ticks[0]
     x2 = x_ticks[1]
     x3 = x_ticks[2]
-    x4 = x_ticks[3]
 
     y = 1
     h = 0.07
@@ -340,31 +305,20 @@ def main():
     plt.tight_layout()
     plt.savefig(path_to_pr_aucs_fig)
 
+    # Significance ladder: adjacent pairs on the first rung, the KS–MWU span above them.
     axs.plot([x1, x2], [y + h, y + h], lw=1.5, c=col)
-    axs.text((x1 + x2) * .5, y + h, ks_anderson_text, ha='center', va='bottom', color=col,
+    axs.text((x1 + x2) * .5, y + h, ks_cvm_text, ha='center', va='bottom', color=col,
              fontsize=font_size * 1)
 
-    axs.plot([x3, x4], [y + h, y + h], lw=1.5, c=col)
-    axs.text((x3 + x4) * .5, y + h, cvm_mannwhitneyu_text, ha='center', va='bottom', color=col,
+    axs.plot([x2, x3], [y + h, y + h], lw=1.5, c=col)
+    axs.text((x2 + x3) * .5, y + h, cvm_mannwhitneyu_text, ha='center', va='bottom', color=col,
              fontsize=font_size * 1)
 
-    axs.plot([x2, x3], [y + 2 * h, y + 2 * h], lw=1.5, c=col)
-    axs.text((x2 + x3) * .5, y + 2 * h, anderson_cvm_text, ha='center', va='bottom', color=col,
+    axs.plot([x1, x3], [y + 2 * h, y + 2 * h], lw=1.5, c=col)
+    axs.text((x1 + x3) * .5, y + 2 * h, ks_mannwhitneyu_text, ha='center', va='bottom', color=col,
              fontsize=font_size * 1)
 
-    axs.plot([x1, x3], [y + 3 * h, y + 3 * h], lw=1.5, c=col)
-    axs.text((x1 + x3) * .5, y + 3 * h, ks_cvm_text, ha='center', va='bottom', color=col,
-             fontsize=font_size * 1)
-
-    axs.plot([x2, x4], [y + 4 * h, y + 4 * h], lw=1.5, c=col)
-    axs.text((x2 + x4) * .5, y + 4 * h, anderson_mannwhitneyu_text, ha='center', va='bottom', color=col,
-             fontsize=font_size * 1)
-
-    axs.plot([x1, x4], [y + 5 * h, y + 5 * h], lw=1.5, c=col)
-    axs.text((x1 + x4) * .5, y + 5 * h, ks_mannwhitneyu_text, ha='center', va='bottom', color=col,
-             fontsize=font_size * 1)
-
-    axs.set_ylim([0, y + 6 * h])
+    axs.set_ylim([0, y + 3 * h])
     axs.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
 
     plt.tight_layout()

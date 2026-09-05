@@ -64,14 +64,15 @@ def main():
     height_in_cm: float = 7
     font_size: float = 8
 
-    colors = ['#ca0020', '#f4a582', '#92c5de', '#0571b0']
+    colors = ['#ca0020', '#92c5de', '#0571b0']
 
+    # Three tests (KS, CVM, MannWhitneyU) → three pairwise comparisons. Indices are into the `tests`
+    # list below, which is ['KS', 'CVM', 'MannWhitneyU'].
     p_value_order: list[tuple[str, str]] = [
-        ('KS', 'Anderson'), ('CVM', 'MannWhitneyU'), ('Anderson', 'CVM'),
-        ('KS', 'CVM'), ('Anderson', 'MannWhitneyU'), ('KS', 'MannWhitneyU')
+        ('KS', 'CVM'), ('KS', 'MannWhitneyU'), ('CVM', 'MannWhitneyU')
     ]
-    p_value_order_idx: list[tuple[int, int]] = [(0, 1), (2, 3), (1, 2), (0, 2), (1, 3), (0, 3)]
-    p_value_y_positions: list[float] = [0.9, 0.9, 0.93, 0.96, 0.99, 1.02]
+    p_value_order_idx: list[tuple[int, int]] = [(0, 1), (0, 2), (1, 2)]
+    p_value_y_positions: list[float] = [0.93, 0.99, 1.05]
 
     fig_size = (width_in_cm * cm, height_in_cm * cm)
 
@@ -91,10 +92,11 @@ def main():
 
     tests: list[str] = list(pr_auc_data_dict[mean_types[0]][cases_l2fcs[0]][proportions[0]].keys())
 
-    n_dots_per_box: int = 4
-    x_positions = np.arange(4)
+    n_dots_per_box: int = len(tests)
+    x_positions = np.arange(len(cases_l2fcs))
     box_width = 0.8 / n_dots_per_box
-    x_offset_per_test = [-0.25 + i * box_width for i in range(n_dots_per_box)]
+    # Centre the per-test boxes on each l2fc group so the trio stays symmetric for any n_dots_per_box.
+    x_offset_per_test = [-0.4 + box_width * (i + 0.5) for i in range(n_dots_per_box)]
 
     for mean_type in mean_types:
         path_to_figs_mean_type = os.path.join(path_to_figs, mean_type)

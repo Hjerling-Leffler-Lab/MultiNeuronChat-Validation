@@ -76,7 +76,7 @@ def main():
         '0.8',
         '1.0'
     ]
-    statistical_tests: list[str] = ['KS', 'Anderson', 'CVM', 'MannWhitneyU']
+    statistical_tests: list[str] = ['KS', 'CVM', 'MannWhitneyU']
 
     pr_auc_summary_table: pd.DataFrame = pd.DataFrame(columns=[
         'Mean Type',

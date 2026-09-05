@@ -172,7 +172,7 @@ def main():
     }
 
     print('Computing significance')
-    for statistical_test in ['KS', 'Anderson', 'CVM', 'MannWhitneyU']:
+    for statistical_test in ['KS', 'CVM', 'MannWhitneyU']:
         start_time_statistical_test = time.time()
 
         mnc_object.compute_significance(
@@ -187,7 +187,7 @@ def main():
         )
 
     print('Correcting p-values')
-    for statistical_test in ['KS', 'Anderson', 'CVM', 'MannWhitneyU']:
+    for statistical_test in ['KS', 'CVM', 'MannWhitneyU']:
         start_time_correction = time.time()
         mnc_object.correct_p_values(statistical_test=statistical_test)
         end_time_correction = time.time()

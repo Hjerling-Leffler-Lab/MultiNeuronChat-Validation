@@ -144,7 +144,7 @@ def main():
         '--statistical_tests',
         nargs='+',
         type=str,
-        default=['KS', 'Anderson', 'CVM', 'MannWhitneyU']
+        default=['KS', 'CVM', 'MannWhitneyU']
     )
     args = parser.parse_args()
 

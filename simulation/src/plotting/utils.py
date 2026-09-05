@@ -13,20 +13,18 @@ cm: float = 1/2.54
 
 statistical_test_short: dict[str, str] = {
     'KS': 'KS',
-    'Anderson': 'AD',
     'CVM': 'CVM',
     'MannWhitneyU': 'MWU'
 }
 
 statistical_test_colors: dict[str, str] = {
     'KS': '#ca0020',
-    'Anderson': '#f4a582',
     'CVM': '#92c5de',
     'MannWhitneyU': '#0571b0'
 }
 wasserstein_statistical_test_colors: dict[str, str] = {
     x: y
-    for x, y in zip(['KS', 'Anderson', 'CVM', 'MannWhitneyU'], sns.color_palette('husl', n_colors=4))
+    for x, y in zip(['KS', 'CVM', 'MannWhitneyU'], sns.color_palette('husl', n_colors=3))
 }
 
 # Prefiltering methods evaluated in the precision/recall benchmark. Keys are the label prefixes used in
@@ -52,7 +50,7 @@ def make_test_label(filter_key: str, statistical_test: str) -> str:
     and a statistical test name. The unfiltered baseline ('None') carries no prefix.
 
     :param filter_key: one of the keys of filter_display_names
-    :param statistical_test: e.g. 'KS', 'Anderson', 'CVM', 'MannWhitneyU'
+    :param statistical_test: e.g. 'KS', 'CVM', 'MannWhitneyU'
     :return: the label string, e.g. 'KS_adj' or 'Variance-top10_KS_adj'
     """
     if filter_key == 'None':

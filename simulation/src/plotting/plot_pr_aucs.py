@@ -153,15 +153,16 @@ def main():
 
     case_l2fc_label = convert_cases_l2fc_label(case)
 
-    n_tests: int = 4
+    n_tests: int = 3
     n_proportions: int = len(proportions)
 
-    colors = [statistical_test_colors[statistical_test] for statistical_test in ['KS', 'Anderson', 'CVM', 'MannWhitneyU']]
+    colors = [statistical_test_colors[statistical_test] for statistical_test in ['KS', 'CVM', 'MannWhitneyU']]
 
-    p_value_order: list[tuple[str, str]] = [('KS', 'Anderson'), ('CvM', 'MannWhitneyU'), ('Anderson', 'CvM'), ('KS', 'CvM'),
-                                            ('Anderson', 'MannWhitneyU'), ('KS', 'MannWhitneyU')]
-    p_value_order_idx: list[tuple[int, int]] = [(0, 1), (2, 3), (1, 2), (0, 2), (1, 3), (0, 3)]
-    p_value_y_positions: list[float] = [0.755, 0.755, 0.78, 0.81, 0.84, 0.87]
+    # Three tests (KS, CVM, MannWhitneyU) → three pairwise comparisons. Indices are into the test order
+    # ['KS', 'CVM', 'MannWhitneyU'] used for `colors` and `x_offset_per_test`.
+    p_value_order: list[tuple[str, str]] = [('KS', 'CVM'), ('KS', 'MannWhitneyU'), ('CVM', 'MannWhitneyU')]
+    p_value_order_idx: list[tuple[int, int]] = [(0, 1), (0, 2), (1, 2)]
+    p_value_y_positions: list[float] = [0.78, 0.82, 0.86]
 
     curves_data_dict: dict[str, dict[str, dict[str, list[tuple[np.ndarray, np.ndarray, np.ndarray]]]]]
     pr_auc_data_dict: dict[str, dict[str, dict[str, list[float] | np.array]]]
@@ -180,7 +181,8 @@ def main():
     box_width = 0.8 / n_tests
     x_positions: np.ndarray = np.arange(n_proportions) * 1.5
     if plot_with_offset:
-        x_offset_per_test: list[float] = [-0.25 + i * box_width for i in range(n_tests)]
+        # Centre the per-test markers on each proportion so the trio stays symmetric for any n_tests.
+        x_offset_per_test: list[float] = [-0.4 + box_width * (i + 0.5) for i in range(n_tests)]
     else:
         x_offset_per_test = [0] * n_tests
 
@@ -191,7 +193,7 @@ def main():
         std_aucs_per_statistical_test: dict[str, list[float]] = {}
 
         # This dictionary contains the p-values for paired comparisons between the statistical tests
-        # The order is as follows: KS-Anderson, CvM-MannWhitney, KS-CvM, Anderson-MannWhitney, Anderson-CvM, KS-MannWhitney
+        # The order is as follows: KS-CVM, KS-MannWhitney, CVM-MannWhitney
         p_values: dict[str, list[float]] = {}
 
         for proportion in proportions:

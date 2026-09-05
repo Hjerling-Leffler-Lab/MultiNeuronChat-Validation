@@ -116,7 +116,6 @@ def main():
 
                     total_time: float = 0.0
                     total_time_KS: float = 0.0
-                    total_time_AD: float = 0.0
                     total_time_CvM: float = 0.0
                     total_time_MwU: float = 0.0
 
@@ -141,8 +140,6 @@ def main():
                             test = str(key).split('_')[-1]
                             if test == 'KS':
                                 total_time_KS += diff
-                            elif test == 'Anderson':
-                                total_time_AD += diff
                             elif test == 'CVM':
                                 total_time_CvM += diff
                             elif test == 'MannWhitneyU':
@@ -150,10 +147,9 @@ def main():
 
                     total_timings: list[tuple[str, float]] = [
                         ('total_time', total_time),
-                        ('total_time_KS',total_time_KS),
-                        ('total_time_AD',total_time_AD),
-                        ('total_time_CVM',total_time_CvM),
-                        ('total_time_MwU',total_time_MwU),
+                        ('total_time_KS', total_time_KS),
+                        ('total_time_CVM', total_time_CvM),
+                        ('total_time_MwU', total_time_MwU),
                     ]
 
                     for type, time in total_timings:
@@ -168,6 +164,41 @@ def main():
     # Remove the total_time
     all_timings_df = all_timings_df[all_timings_df['timing_type'] != 'total_time']
 
+    # Explicit left-to-right ordering of the timing events, grouped into: setup (communication scores),
+    # the three label-blind prefilter masks, per-test significance, per-test FDR correction, and the
+    # per-test total. Passing `order=` makes the x-axis self-consistent regardless of dict/file order,
+    # and any timing key not listed here (e.g. a legacy Anderson column) is simply not drawn.
+    category_order: list[str] = [
+        'computation_of_communication_scores',
+        'wasserstein_mask',
+        'variance_mask',
+        'abundance_mask',
+        'significance_KS',
+        'significance_CVM',
+        'significance_MannWhitneyU',
+        'correction_KS',
+        'correction_CVM',
+        'correction_MannWhitneyU',
+        'total_time_KS',
+        'total_time_CVM',
+        'total_time_MwU',
+    ]
+    category_labels: list[str] = [
+        'Com.\nScores',
+        'Wass.\nMask',
+        'Var.\nMask',
+        'Abund.\nMask',
+        'KS',
+        'CVM',
+        'MWU',
+        'FDR\nKS',
+        'FDR\nCVM',
+        'FDR\nMWU',
+        'Total\nKS',
+        'Total\nCVM',
+        'Total\nMWU',
+    ]
+
     all_means_fig, all_means_axs = plt.subplots(1, 1, figsize=(width_in_cm * cm, height_in_cm * cm))
 
     color_palette = sns.color_palette('husl', len(means))
@@ -180,6 +211,7 @@ def main():
         y='timing_result',
         hue='mean',
         data=all_timings_df,
+        order=category_order,
         ax=all_means_axs,
         linewidth=0.5,
         flierprops=dict(marker='o', markersize=3, markeredgewidth=0.5),
@@ -205,40 +237,31 @@ def main():
     all_means_axs.set_xlabel('Timing Event', fontsize=fontsize)
     all_means_axs.set_ylabel('Time in seconds', fontsize=fontsize)
 
-    all_means_axs.set_xticks([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
-    all_means_axs.set_xticklabels([
-        'Com.\nScores',
-        'Wasserstein\nMask',
-        'KS',
-        'AD',
-        'CvM',
-        'MwU',
-        'FDR\nKS',
-        'FDR\nAD',
-        'FDR\nCvM',
-        'FDR\nMwU',
-        'Total\nKS',
-        'Total\nAD',
-        'Total\nCvM',
-        'Total\nMwU',
-    ], fontsize=fontsize * 0.8)
+    all_means_axs.set_xticks(list(range(len(category_order))))
+    all_means_axs.set_xticklabels(category_labels, fontsize=fontsize * 0.8)
 
     max_y = np.max(all_timings_df['timing_result'])
     max_y_lim = max_y * 1.2
 
-    all_means_axs.vlines(1.5, 0, max_y_lim, color='black', linestyle='--', alpha=0.5)
-    all_means_axs.vlines(0.5, 0, max_y_lim, color='black', linestyle='--', alpha=0.5)
-    all_means_axs.vlines(5.5, 0, max_y_lim, color='black', linestyle='--', alpha=0.5)
-    all_means_axs.vlines(9.5, 0, max_y_lim, color='black', linestyle='--', alpha=0.8)
+    # Group boundaries (in category-index space): Com.Scores | masks | significance | correction | total.
+    # Dividers sit halfway between the last index of one group and the first of the next.
+    divider_positions: list[float] = [0.5, 3.5, 6.5, 9.5]
+    for divider in divider_positions:
+        alpha = 0.8 if divider == 9.5 else 0.5
+        all_means_axs.vlines(divider, 0, max_y_lim, color='black', linestyle='--', alpha=alpha)
 
-    all_means_axs.text((5.5 - 1.5) / 2 + 1.5, max_y_lim * 0.95, 'Computation of Significance', ha='center', va='top',
-                       fontsize=fontsize * 0.8)
-    all_means_axs.text((9.5 - 5.5) / 2 + 5.5, max_y_lim * 0.95, 'Correction of P-Values', ha='center', va='top',
-                       fontsize=fontsize * 0.8)
-    all_means_axs.text((13.5 - 9.5) / 2 + 9.5, max_y_lim * 0.95, 'Total Time per Test', ha='center', va='top',
-                       fontsize=fontsize * 0.8)
+    # Section headers centred over each group's index span.
+    section_headers: list[tuple[float, float, str]] = [
+        (1, 3, 'Prefilter Masks'),
+        (4, 6, 'Computation of Significance'),
+        (7, 9, 'Correction of P-Values'),
+        (10, 12, 'Total Time per Test'),
+    ]
+    for start_idx, end_idx, header in section_headers:
+        all_means_axs.text((start_idx + end_idx) / 2, max_y_lim * 0.95, header, ha='center', va='top',
+                           fontsize=fontsize * 0.8)
 
-    all_means_axs.set_xlim([-0.5, 13.5])
+    all_means_axs.set_xlim([-0.5, len(category_order) - 0.5])
     all_means_axs.set_ylim([-50, max_y_lim])
     all_means_axs.set_title('MultiNeuronChat Timings', fontsize=fontsize)
 

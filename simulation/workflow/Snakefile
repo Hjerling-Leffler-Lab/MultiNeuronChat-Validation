@@ -45,7 +45,7 @@ rule plot_all:
             "results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}.pdf",
             mean_type=["tri_mean"],
             trim_mean_fraction=config["trim_mean_fractions"]["default"],
-            statistical_test=['KS', 'Anderson', 'CVM', 'MannWhitneyU'],
+            statistical_test=['KS', 'CVM', 'MannWhitneyU'],
             case=CASES,
         ),
 
@@ -58,13 +58,6 @@ rule plot_all:
         ),
         expand(
             'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf',
-            mean_type=["tri_mean", 'mean'],
-            trim_mean_fraction=config["trim_mean_fractions"]["default"],
-            case=CASES,
-            proportion=PROPORTIONS,
-        ),
-        expand(
-            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf',
             mean_type=["tri_mean", 'mean'],
             trim_mean_fraction=config["trim_mean_fractions"]["default"],
             case=CASES,
@@ -108,13 +101,6 @@ rule plot_all:
         ),
         expand(
             'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf',
-            mean_type=["trim_mean"],
-            trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
-            case=CASES,
-            proportion=PROPORTIONS,
-        ),
-        expand(
-            'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf',
             mean_type=["trim_mean"],
             trim_mean_fraction=config["trim_mean_fractions"]["trim_mean"],
             case=CASES,
@@ -175,13 +161,6 @@ rule plot_all:
             case=CASES,
             proportion=PROPORTIONS,
         ),
-        path_to_anderson_figures= expand(
-            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf",
-            mean_type=['mean', 'tri_mean'],
-            trim_mean_fraction=config['trim_mean_fractions']['default'],
-            case=CASES,
-            proportion=PROPORTIONS,
-        ),
         path_to_cvm_figure= expand(
             "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf",
             mean_type=['mean', 'tri_mean'],
@@ -202,13 +181,6 @@ rule plot_all:
                 trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
                 case=CASES,
                 proportion=PROPORTIONS,
-        ),
-        path_to_anderson_figures_trim_mean=expand(
-            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf",
-            mean_type=['trim_mean'],
-            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
-            case=CASES,
-            proportion=PROPORTIONS,
         ),
         path_to_cvm_figure_trim_mean=expand(
             "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf",
@@ -282,7 +254,7 @@ rule plot_precision_recall_plots:
         mean_type = "mean|tri_mean|trim_mean",
         trim_mean_fraction = "0|0\\.[0-9]+",
         case = "CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
-        statistical_test="KS|Anderson|CVM|MannWhitneyU",
+        statistical_test="KS|CVM|MannWhitneyU",
     resources:
         slurm_partition="cpu",
         runtime=60,                 # 1 hours
@@ -376,7 +348,7 @@ rule get_pr_curve_data:
         path_to_pr_aucs_output='results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
         path_to_error_bands_dict='results/figs/pr_curves/summary_data/error_bands/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
     params:
-        statistical_tests="KS Anderson CVM MannWhitneyU",
+        statistical_tests="KS CVM MannWhitneyU",
     wildcard_constraints:
         mean_type="mean|tri_mean|trim_mean",
         trim_mean_fraction="0|0\\.[0-9]+",
@@ -408,7 +380,6 @@ rule plot_pr_curves_and_auc:
     output:
         path_to_summary_pr_curves_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary.pdf',
         path_to_pr_curves_KS_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf',
-        path_to_pr_curves_Anderson_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf',
         path_to_pr_curves_CVM_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf',
         path_to_pr_curves_MannWhitneyU_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf',
         path_to_pr_aucs_with_significance_fig='results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary_with_significance.pdf',
@@ -437,7 +408,6 @@ rule plot_pr_curves_and_auc:
         --path_to_error_bands_dict {input.path_to_error_bands_dict} \
         --path_to_summary_pr_curves_fig {output.path_to_summary_pr_curves_fig} \
         --path_to_pr_curves_KS_fig {output.path_to_pr_curves_KS_fig} \
-        --path_to_pr_curves_Anderson_fig {output.path_to_pr_curves_Anderson_fig} \
         --path_to_pr_curves_CVM_fig {output.path_to_pr_curves_CVM_fig} \
         --path_to_pr_curves_MannWhitneyU_fig {output.path_to_pr_curves_MannWhitneyU_fig} \
         --path_to_pr_aucs_with_significance_fig {output.path_to_pr_aucs_with_significance_fig} \
@@ -688,7 +658,6 @@ rule plot_wasserstein_vs_p_values:
         ),
     output:
         path_to_ks_figure = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf",
-        path_to_anderson_figures = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/Anderson.pdf",
         path_to_cvm_figure = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf",
         path_to_mwu_figure = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf",
     params:
@@ -714,7 +683,6 @@ rule plot_wasserstein_vs_p_values:
         --mnc_file_paths {input.mnc_file_paths} \
         --wasserstein_paths {input.wasserstein_paths} \
         --path_to_ks_figure {output.path_to_ks_figure} \
-        --path_to_anderson_figures {output.path_to_anderson_figures} \
         --path_to_cvm_figure {output.path_to_cvm_figure} \
         --path_to_mwu_figure {output.path_to_mwu_figure} \
         --mean_type {params.mean_type} \
@@ -1490,7 +1458,7 @@ rule get_pr_curve_data_n_sweep:
         path_to_pr_aucs_output='results/figs/pr_curves_n_sweep/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
         path_to_error_bands_dict='results/figs/pr_curves_n_sweep/summary_data/error_bands/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
     params:
-        statistical_tests="KS Anderson CVM MannWhitneyU",
+        statistical_tests="KS CVM MannWhitneyU",
     wildcard_constraints:
         mean_type="mean|tri_mean|trim_mean",
         trim_mean_fraction="0|0\\.[0-9]+",

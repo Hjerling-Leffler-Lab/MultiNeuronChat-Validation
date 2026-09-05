@@ -41,11 +41,6 @@ def main():
         required=True,
     )
     parser.add_argument(
-        '--path_to_anderson_figures',
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
         '--path_to_cvm_figure',
         type=str,
         required=True,
@@ -102,19 +97,17 @@ def main():
     proportion: float = args.proportion
 
     path_to_ks_figure: str = args.path_to_ks_figure
-    path_to_anderson_figures: str = args.path_to_anderson_figures
     path_to_cvm_figure: str = args.path_to_cvm_figure
     path_to_mwu_figure: str = args.path_to_mwu_figure
 
     significance_test_to_path: dict[str, str] = {
         'KS': path_to_ks_figure,
-        'Anderson': path_to_anderson_figures,
         'CVM': path_to_cvm_figure,
         'MannWhitneyU': path_to_mwu_figure,
     }
 
     # Create paths if they don't exist
-    for path in [path_to_ks_figure, path_to_anderson_figures, path_to_cvm_figure, path_to_mwu_figure]:
+    for path in [path_to_ks_figure, path_to_cvm_figure, path_to_mwu_figure]:
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
     width_in_cm: float = args.width_in_cm

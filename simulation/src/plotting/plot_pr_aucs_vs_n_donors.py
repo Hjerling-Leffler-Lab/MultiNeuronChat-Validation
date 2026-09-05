@@ -80,7 +80,7 @@ def main():
 
     case_l2fc_label = convert_cases_l2fc_label(case)
 
-    statistical_tests: list[str] = ['KS', 'Anderson', 'CVM', 'MannWhitneyU']
+    statistical_tests: list[str] = ['KS', 'CVM', 'MannWhitneyU']
     n_tests: int = len(statistical_tests)
     n_points: int = len(n_donors)
 

@@ -62,7 +62,7 @@ def convert_cases_to_log2_fc_str(case: str) -> str:
 
 
 def main():
-    statistical_tests: list[str] = ['KS', 'Anderson', 'CVM', 'MannWhitneyU']
+    statistical_tests: list[str] = ['KS', 'CVM', 'MannWhitneyU']
 
     pr_auc_summary_table: pd.DataFrame = pd.DataFrame(columns=[
         'Mean Type',
