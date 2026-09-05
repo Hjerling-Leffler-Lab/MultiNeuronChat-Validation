@@ -1,14 +1,14 @@
-import copy
-
 import pickle
 
 import numpy as np
 import xarray as xr
 import pandas as pd
 
+from scipy import stats
+
 from multineuronchat import MultiNeuronChatObject
 
-from utils import get_expected_perturbations_array
+from utils import get_expected_perturbations_array, filter_display_names, make_test_label
 
 import argparse
 
@@ -40,6 +40,69 @@ def compute_confusion_matrix(
     )
 
     return confusion_matrix
+
+
+def top_percentile_mask(statistic: xr.DataArray, keep_fraction: float = 0.1) -> xr.DataArray:
+    """
+    Build a boolean mask keeping the triples with the largest statistic values, at the requested
+    retained fraction. NaN triples (untestable) never pass, matching the package mask semantics.
+
+    :param statistic: per-triple statistic with dims (source, receiver, interaction), NaN where undefined
+    :param keep_fraction: fraction of triples to keep (0.1 keeps the top 10%)
+    :return: boolean DataArray, True for the retained triples
+    """
+    threshold: float = np.nanpercentile(statistic, 100 * (1 - keep_fraction))
+    return statistic >= threshold
+
+
+def precision_recall_from_p_values_adj(
+        reference_matrix: xr.DataArray,
+        p_values_adj: xr.DataArray,
+) -> tuple[float, float]:
+    """
+    Compute precision and recall of the significant triples (adjusted p < 0.05) against the ground truth.
+
+    :param reference_matrix: the ground-truth perturbation matrix (1 for perturbed triples)
+    :param p_values_adj: BY-corrected p-values for one statistical test
+    :return: (precision, recall)
+    """
+    confusion_matrix: xr.DataArray = compute_confusion_matrix(
+        reference_matrix=reference_matrix,
+        test_matrix=p_values_adj < 0.05,
+    )
+
+    true_positives: xr.DataArray = confusion_matrix.loc[{'actual': 'positive', 'predicted': 'positive'}]
+
+    precision: xr.DataArray = true_positives / np.sum(confusion_matrix.loc[{'predicted': 'positive'}])
+    recall: xr.DataArray = true_positives / np.sum(confusion_matrix.loc[{'actual': 'positive'}])
+
+    return float(precision.values), float(recall.values)
+
+
+def by_correct(raw_p_values: xr.DataArray, mask: xr.DataArray | None = None) -> xr.DataArray:
+    """
+    Benjamini-Yekutieli correction of a p-value cube, optionally restricted to a prefilter mask.
+
+    The prefilter only affects which triples enter the correction: applying it sets the non-selected
+    triples to NaN, so the correction runs over fewer hypotheses (a smaller denominator, hence more
+    power). It does not change any triple's raw p-value, so we reuse the raw p-values computed once in
+    step 7 rather than recomputing significance per filter. This matches the package's own correction
+    (MultiNeuronChatObject.__correct_p_values), which drops NaNs before scipy's false_discovery_control.
+
+    :param raw_p_values: uncorrected per-triple p-values (NaN where untestable), dims (source, receiver, interaction)
+    :param mask: boolean DataArray selecting the triples to keep; None keeps every testable triple
+    :return: BY-corrected p-values, NaN outside the retained/testable set
+    """
+    selected: xr.DataArray = raw_p_values if mask is None else raw_p_values.where(mask)
+
+    values: np.ndarray = selected.values
+    corrected: np.ndarray = np.full_like(values, np.nan)
+
+    finite: np.ndarray = ~np.isnan(values)
+    if np.any(finite):
+        corrected[finite] = stats.false_discovery_control(values[finite], method='by')
+
+    return xr.DataArray(corrected, dims=selected.dims, coords=selected.coords)
 
 
 def main():
@@ -130,53 +193,47 @@ def main():
             )
         )
 
-        wasserstein_distances = wasserstein_object['wasserstein_distances']
+        # Build one BY-corrected p-value cube per prefilter. 'None' is the unfiltered baseline, which was
+        # already computed and corrected in step 7, so it is reused directly. The legacy Wasserstein filter
+        # and the label-blind Variance/Abundance filters are each applied at two retentions: 'top10' keeps
+        # the top 10% of triples by the statistic, 'min0' keeps every triple whose statistic is strictly
+        # positive (dropping only untestable, all-zero triples).
+        wasserstein_distances: xr.DataArray = wasserstein_object['wasserstein_distances']
+        variances: xr.DataArray = wasserstein_object['variances']
+        abundances: xr.DataArray = wasserstein_object['abundances']
 
-        wasserstein_mask = wasserstein_distances > np.nanpercentile(wasserstein_distances, 90)
+        # 'None' keeps every testable triple; the other filters restrict the correction to a subset.
+        # The raw p-values are the same for every filter (reused from step 7); only the BY-correction
+        # denominator differs.
+        masks: dict[str, xr.DataArray | None] = {
+            'None': None,
+            'Wasserstein': top_percentile_mask(wasserstein_distances, keep_fraction=0.1),
+            'Variance-top10': top_percentile_mask(variances, keep_fraction=0.1),
+            'Variance-min0': variances > 0,
+            'Abundance-top10': top_percentile_mask(abundances, keep_fraction=0.1),
+            'Abundance-min0': abundances > 0,
+        }
 
-        mnc_object_corrected = copy.deepcopy(mnc_object)
+        raw_p_values: xr.DataArray = mnc_object.p_values[statistical_test]
 
-        # Compute the significance again for the wasserstein mask set at the top 10 percent of cells
-        mnc_object_corrected.compute_significance(
-            statistical_test=statistical_test,
-            mask=wasserstein_mask,
-        )
+        p_values_adj_per_filter: dict[str, xr.DataArray] = {
+            filter_key: by_correct(raw_p_values, mask=mask)
+            for filter_key, mask in masks.items()
+        }
 
-        mnc_object_corrected.correct_p_values(
-            statistical_test=statistical_test,
-            method='by'
-        )
+        # Append one row per filter, in the canonical order defined in utils.filter_display_names.
+        for filter_key in filter_display_names:
+            precision, recall = precision_recall_from_p_values_adj(
+                reference_matrix=reference_matrix,
+                p_values_adj=p_values_adj_per_filter[filter_key],
+            )
 
-        confusion_matrix_test: xr.DataArray = compute_confusion_matrix(
-            reference_matrix=reference_matrix,
-            test_matrix=mnc_object.p_values_adj[statistical_test] < 0.05
-        )
-
-        confusion_matrix_wasserstein_plus_test: xr.DataArray = compute_confusion_matrix(
-            reference_matrix=reference_matrix,
-            test_matrix=mnc_object_corrected.p_values_adj[statistical_test] < 0.05
-        )
-
-        precision = confusion_matrix_test.loc[{'actual': 'positive', 'predicted': 'positive'}] / np.sum(confusion_matrix_test.loc[{'predicted': 'positive'}])
-        recall = confusion_matrix_test.loc[{'actual': 'positive', 'predicted': 'positive'}] / np.sum(confusion_matrix_test.loc[{'actual': 'positive'}])
-
-        precision_with_wasserstein = confusion_matrix_wasserstein_plus_test.loc[{'actual': 'positive','predicted': 'positive'}] / np.sum(confusion_matrix_wasserstein_plus_test.loc[{'predicted': 'positive'}])
-        recall_with_wasserstein = confusion_matrix_wasserstein_plus_test.loc[{'actual': 'positive','predicted': 'positive'}] / np.sum(confusion_matrix_wasserstein_plus_test.loc[{'actual': 'positive'}])
-
-        # Store results in dictionary
-        precision_recall_dict['Mean Type'].append(mean_type)
-        precision_recall_dict['Case'].append(case)
-        precision_recall_dict['Proportion'].append(proportion)
-        precision_recall_dict['Statistical Test'].append(f'{statistical_test}_adj')
-        precision_recall_dict['Precision'].append(float(precision.values))
-        precision_recall_dict['Recall'].append(float(recall.values))
-
-        precision_recall_dict['Mean Type'].append(mean_type)
-        precision_recall_dict['Case'].append(case)
-        precision_recall_dict['Proportion'].append(proportion)
-        precision_recall_dict['Statistical Test'].append(f'Wasserstein_{statistical_test}_adj')
-        precision_recall_dict['Precision'].append(float(precision_with_wasserstein.values))
-        precision_recall_dict['Recall'].append(float(recall_with_wasserstein.values))
+            precision_recall_dict['Mean Type'].append(mean_type)
+            precision_recall_dict['Case'].append(case)
+            precision_recall_dict['Proportion'].append(proportion)
+            precision_recall_dict['Statistical Test'].append(make_test_label(filter_key, statistical_test))
+            precision_recall_dict['Precision'].append(precision)
+            precision_recall_dict['Recall'].append(recall)
 
     precision_recall_df: pd.DataFrame = pd.DataFrame(precision_recall_dict)
     precision_recall_df.to_pickle(path_to_summary_df)

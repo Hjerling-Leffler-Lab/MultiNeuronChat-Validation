@@ -23,21 +23,37 @@ path_to_summary_files: str = args.path_to_summary_files
 path_to_pr_summary_table_excel: str = args.path_to_pr_summary_table_excel
 
 
+# Statistical test this comparison table is built for (the ROSMAP/paper default).
+STATISTICAL_TEST: str = 'KS'
+
+# Prefilters compared against the unfiltered baseline, as (label prefix, display name), in table order.
+FILTERS: list[tuple[str, str]] = [
+    ('Wasserstein', 'Wasserstein (top 10%, legacy)'),
+    ('Variance-top10', 'Variance (top 10%)'),
+    ('Variance-min0', 'Variance (> 0)'),
+    ('Abundance-top10', 'Abundance (top 10%)'),
+    ('Abundance-min0', 'Abundance (> 0)'),
+]
+
+
 def main():
     log2_fcs: list[str] = ['0.3', '0.5', '1', '1.5']
     proportion_of_affected_donors: list[str] = ['0.1', '0.3', '0.5', '0.8', '1.0']
 
-    # Add the columns KS Repeat 1 - 10 and Wasserstein KS Repeat 1 - 10 for Precision and Recall
-    summary_table_columns = ['Proportion of Affected Donors', 'Log2 FC']
+    # One block per metric: the unfiltered baseline, then each filter's value and its percentage-point
+    # improvement over the baseline.
+    summary_table_columns: list[str] = ['Proportion of Affected Donors', 'Log2 FC']
     for metric in ['Precision', 'Recall']:
-        for metric_2 in ['Mean', 'Wasserstein + Mean', 'Percentage Point Improvement']:
-            summary_table_columns.append(f'{metric} – {metric_2}')
+        summary_table_columns.append(f'{metric} – No filter')
+        for _, display_name in FILTERS:
+            summary_table_columns.append(f'{metric} – {display_name}')
+            summary_table_columns.append(f'{metric} – {display_name} (Δpp)')
 
     summary_table = pd.DataFrame(columns=summary_table_columns)
 
     for log2fc in log2_fcs:
         for proportion in proportion_of_affected_donors:
-            file_name: str = f'tri_mean_0_KS_CASE_{log2fc}_{proportion}.pkl'
+            file_name: str = f'tri_mean_0_{STATISTICAL_TEST}_CASE_{log2fc}_{proportion}.pkl'
             file_path: str = os.path.join(path_to_summary_files, file_name)
 
             row_dict = {
@@ -47,27 +63,17 @@ def main():
 
             df = pd.read_pickle(file_path)
 
-            # Get all KS_adj and all Wasserstein_KS_adj
-            df_ks: pd.DataFrame = df[df['Statistical Test'] == 'KS_adj']
-            df_wass_ks: pd.DataFrame = df[df['Statistical Test'] == 'Wasserstein_KS_adj']
+            for metric in ['Precision', 'Recall']:
+                baseline_label: str = f'{STATISTICAL_TEST}_adj'
+                baseline_mean: float = df[df['Statistical Test'] == baseline_label][metric].mean()
+                row_dict[f'{metric} – No filter'] = baseline_mean
 
-            mean_precision_ks = df_ks['Precision'].mean()
-            mean_precision_wass_ks = df_wass_ks['Precision'].mean()
+                for filter_key, display_name in FILTERS:
+                    filter_label: str = f'{filter_key}_{STATISTICAL_TEST}_adj'
+                    filter_mean: float = df[df['Statistical Test'] == filter_label][metric].mean()
 
-            precision_improvement_percentage_points = (mean_precision_wass_ks - mean_precision_ks) * 100
-
-            mean_recall_ks = df_ks['Recall'].mean()
-            mean_recall_wass_ks = df_wass_ks['Recall'].mean()
-
-            recall_improvement_percentage_points = (mean_recall_wass_ks - mean_recall_ks) * 100
-
-            row_dict['Precision – Mean'] = mean_precision_ks
-            row_dict['Precision – Wasserstein + Mean'] = mean_precision_wass_ks
-            row_dict['Recall – Mean'] = mean_recall_ks
-            row_dict['Recall – Wasserstein + Mean'] = mean_recall_wass_ks
-
-            row_dict['Precision – Percentage Point Improvement'] = precision_improvement_percentage_points
-            row_dict['Recall – Percentage Point Improvement'] = recall_improvement_percentage_points
+                    row_dict[f'{metric} – {display_name}'] = filter_mean
+                    row_dict[f'{metric} – {display_name} (Δpp)'] = (filter_mean - baseline_mean) * 100
 
             summary_table = pd.concat([
                 summary_table,

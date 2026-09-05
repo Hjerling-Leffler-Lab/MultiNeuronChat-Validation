@@ -21,6 +21,36 @@ path_to_summary_files: str = args.path_to_summary_files
 path_to_pr_summary_table_excel: str = args.path_to_pr_summary_table_excel
 
 
+# Prefilter label prefixes used in the 'Statistical Test' column of the summary dataframes, mapped to
+# human-readable names. Mirrors utils.filter_display_names (the tables package cannot import the plotting
+# utils, so the mapping is duplicated here). 'None' is the unfiltered baseline, whose label has no prefix.
+FILTER_DISPLAY_NAMES: dict[str, str] = {
+    'None': 'No filter',
+    'Wasserstein': 'Wasserstein (top 10%, legacy)',
+    'Variance-top10': 'Variance (top 10%)',
+    'Variance-min0': 'Variance (> 0)',
+    'Abundance-top10': 'Abundance (top 10%)',
+    'Abundance-min0': 'Abundance (> 0)',
+}
+
+
+def parse_filter_key(label: str, statistical_test: str) -> str:
+    """
+    Extract the prefilter key from a 'Statistical Test' label, given the (known) statistical test name.
+
+    :param label: e.g. 'KS_adj' or 'Variance-top10_KS_adj'
+    :param statistical_test: the test name the file is for, e.g. 'KS'
+    :return: the filter key, e.g. 'None' or 'Variance-top10'
+    """
+    core: str = label[:-len('_adj')] if label.endswith('_adj') else label
+    if core == statistical_test:
+        return 'None'
+    suffix: str = f'_{statistical_test}'
+    if core.endswith(suffix):
+        return core[:-len(suffix)]
+    return 'None'
+
+
 def convert_mean_to_str_version(mean: str) -> tuple[str, str]:
     """
     Convert the mean string into "mean" and "Trim Mean Value" components.
@@ -79,7 +109,7 @@ def main():
         'Log2 FC',
         'Proportion Affected Donors',
         'Statistical Test',
-        'With Wasserstein',
+        'Filter',
         'Repeat Number',
         'Precision',
         'Recall'
@@ -100,44 +130,28 @@ def main():
 
                     df: pd.DataFrame = pd.read_pickle(path_to_file)
 
-                    wasserstein_counter: int = 0
-                    non_wasserstein_counter: int = 0
+                    # Per-filter repeat counter: each dataset contributes one row per prefilter.
+                    filter_counters: dict[str, int] = {}
                     for row_i, row in df.iterrows():
-                        # Determine if it's with or without wasserstein distance
-                        if 'Wasserstein' in row['Statistical Test']:
-                            summary_table = pd.concat([
-                                summary_table,
-                                pd.DataFrame([{
-                                    'Mean Type': mean_str,
-                                    'Trim Mean Value': trim_value,
-                                    'Log2 FC': log2_fc_str,
-                                    'Proportion Affected Donors': proportion,
-                                    'Statistical Test': statistical_test,
-                                    'With Wasserstein': True,
-                                    'Repeat Number': wasserstein_counter,
-                                    'Precision': row['Precision'],
-                                    'Recall': row['Recall']
-                                }])
-                            ], ignore_index=True)
+                        filter_key: str = parse_filter_key(row['Statistical Test'], statistical_test)
+                        repeat: int = filter_counters.get(filter_key, 0)
 
-                            wasserstein_counter += 1
-                        else:
-                            summary_table = pd.concat([
-                                summary_table,
-                                pd.DataFrame([{
-                                    'Mean Type': mean_str,
-                                    'Trim Mean Value': trim_value,
-                                    'Log2 FC': log2_fc_str,
-                                    'Proportion Affected Donors': proportion,
-                                    'Statistical Test': statistical_test,
-                                    'With Wasserstein': False,
-                                    'Repeat Number': non_wasserstein_counter,
-                                    'Precision': row['Precision'],
-                                    'Recall': row['Recall']
-                                }])
-                            ], ignore_index=True)
+                        summary_table = pd.concat([
+                            summary_table,
+                            pd.DataFrame([{
+                                'Mean Type': mean_str,
+                                'Trim Mean Value': trim_value,
+                                'Log2 FC': log2_fc_str,
+                                'Proportion Affected Donors': proportion,
+                                'Statistical Test': statistical_test,
+                                'Filter': FILTER_DISPLAY_NAMES.get(filter_key, filter_key),
+                                'Repeat Number': repeat,
+                                'Precision': row['Precision'],
+                                'Recall': row['Recall']
+                            }])
+                        ], ignore_index=True)
 
-                            non_wasserstein_counter += 1
+                        filter_counters[filter_key] = repeat + 1
 
     summary_table.to_excel(path_to_pr_summary_table_excel, index=False)
 
