@@ -1242,7 +1242,7 @@ rule combine_SPARSim_datasets:
         dataset_index="[0-9]+",
     resources:
         slurm_partition = "cpu",
-        runtime = 480,              # 8 hour
+        runtime = 1440,             # 24 hour
         mem_mb = 12_000,            # 12 GB
     shell:
         """
@@ -1273,7 +1273,7 @@ rule normalize_datasets:
         dataset_index="[0-9]+",
     resources:
         slurm_partition = "cpu",
-        runtime=720,              # 12 hours
+        runtime=1440,            # 24 hours
         mem_mb=8_000,            # 8 GB
     shell:
         """
@@ -1364,7 +1364,7 @@ rule combine_SPARSim_datasets_n_sweep:
         dataset_index="[0-9]+",
     resources:
         slurm_partition = "cpu",
-        runtime = 120,              # 2 hours (small cohorts)
+        runtime = 1440,             # 24 hours (small cohorts)
         mem_mb = 12_000,            # 12 GB
     shell:
         """
@@ -1395,7 +1395,7 @@ rule normalize_datasets_n_sweep:
         dataset_index="[0-9]+",
     resources:
         slurm_partition = "cpu",
-        runtime=240,              # 4 hours (small cohorts)
+        runtime=1440,             # 24 hours (small cohorts)
         mem_mb=8_000,            # 8 GB
     shell:
         """
@@ -1426,7 +1426,7 @@ rule run_MultiNeuronChat_n_sweep:
         dataset_index="[0-9]+",
     resources:
         slurm_partition="cpu",
-        runtime=360,              # 6 hours (small cohorts)
+        runtime=360,             # 6 hours (small cohorts)
         mem_mb=8_000,            # 8 GB
     shell:
         """
