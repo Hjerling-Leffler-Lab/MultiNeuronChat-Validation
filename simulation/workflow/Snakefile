@@ -298,7 +298,7 @@ rule create_summary_statistics:
             proportion=lambda wildcards: wildcards.proportion,
             dataset_index=range(0,N_DATASETS),
         ),
-        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways.csv"
+        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways_gene_level.csv"
     output:
         path_to_summary_df="results/figs/precision_recall/summary_dfs/{mean_type}_{trim_mean_fraction}_{statistical_test}_{case}_{proportion}.pkl",
     params:
@@ -342,7 +342,7 @@ rule get_pr_curve_data:
             proportion=lambda wildcards: wildcards.proportion,
             dataset_index=range(0,N_DATASETS),
         ),
-        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways.csv"
+        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways_gene_level.csv"
     output:
         path_to_curves_output='results/figs/pr_curves/summary_data/curves/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
         path_to_pr_aucs_output='results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
@@ -639,7 +639,7 @@ rule create_pr_auc_summary_table:
 rule plot_wasserstein_vs_p_values:
     input:
         path_to_script = 'src/plotting/plot_wasserstein_vs_p_values.py',
-        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways.csv",
+        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways_gene_level.csv",
         mnc_file_paths = expand(
             'results/MNC_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl',
             mean_type = lambda wildcards: wildcards.mean_type,
@@ -1007,6 +1007,7 @@ rule extend_expected_perturbed_pathways:
         path_to_producible_targets="data/simulation/producible_targets.csv",
     output:
         path_to_output_expected_perturbed_pathways="data/simulation/expected_perturbed_pathways_gene_level.csv",
+        path_to_output_comparison_report="data/simulation/expected_perturbed_pathways_gene_level_report.txt",
     resources:
         slurm_partition = "cpu",
         runtime = 30,                # 30 minutes
@@ -1019,7 +1020,8 @@ rule extend_expected_perturbed_pathways:
         --path_to_expected_perturbed_pathways {input.path_to_expected_perturbed_pathways} \
         --path_to_producible_ligands {input.path_to_producible_ligands} \
         --path_to_producible_targets {input.path_to_producible_targets} \
-        --path_to_output_expected_perturbed_pathways {output.path_to_output_expected_perturbed_pathways}
+        --path_to_output_expected_perturbed_pathways {output.path_to_output_expected_perturbed_pathways} \
+        --path_to_output_comparison_report {output.path_to_output_comparison_report}
         """
 
 ############ START OF SIMULATION RULES ############
@@ -1519,7 +1521,7 @@ rule get_pr_curve_data_n_sweep:
             n_donors=lambda wildcards: wildcards.n_donors,
             dataset_index=range(0, N_DATASETS),
         ),
-        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways.csv"
+        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways_gene_level.csv"
     output:
         path_to_curves_output='results/figs/pr_curves_n_sweep/summary_data/curves/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
         path_to_pr_aucs_output='results/figs/pr_curves_n_sweep/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
