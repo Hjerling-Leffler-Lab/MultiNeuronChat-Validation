@@ -904,29 +904,38 @@ rule run_neuronchat_comparison:
         """
 
 
-rule extract_ligands_and_targets:
-    input:
-        path_to_script="src/1_extract_ligand_target_production.R",
-
-        path_to_joined_simulation_parameters="model/estimated_parameters_all_genes_combined.rds",
-        path_to_cell_count_parameters="model/cell_types_gamma_parameters.json",
-        path_to_human_extended_database="data/db/interactionDB_human_extended.tsv",
-    output:
-        path_to_output_perturbations_to_perform="data/simulation/perturbations_to_perform.csv",
-        path_to_output_expected_perturbed_pathways="data/simulation/expected_perturbed_pathways.csv",
-    resources:
-        slurm_partition = "cpu",
-        runtime = 480,               # 8 hours
-        mem_mb= 64_000,              # 64 GB
-    shell:
-        """
-        Rscript {input.path_to_script} \
-        {input.path_to_joined_simulation_parameters} \
-        {input.path_to_cell_count_parameters} \
-        {input.path_to_human_extended_database} \
-        {output.path_to_output_perturbations_to_perform} \
-        {output.path_to_output_expected_perturbed_pathways}
-        """
+# NOTE: This rule is intentionally disabled (commented out) for reproducibility.
+# Script 1 (1_extract_ligand_target_production.R) decides which cell types can produce which ligand/target from a
+# SPARSim draw (producible_ligands_2 / producible_targets_2). It calls SPARSim_simulation() without
+# count_data_simulation_seed, so SPARSim's count sampling is seeded from std::random_device and set.seed(42) does not
+# control it. Re-running it would therefore overwrite perturbations_to_perform.csv and expected_perturbed_pathways.csv
+# with different results. The committed CSVs are the canonical, published versions used in the manuscript and must NOT
+# be regenerated. With this rule disabled, Snakemake treats them as pre-existing inputs. The producibility matrices are
+# re-created reproducibly by rule export_producible_ligands_and_targets below.
+#
+# rule extract_ligands_and_targets:
+#     input:
+#         path_to_script="src/1_extract_ligand_target_production.R",
+#
+#         path_to_joined_simulation_parameters="model/estimated_parameters_all_genes_combined.rds",
+#         path_to_cell_count_parameters="model/cell_types_gamma_parameters.json",
+#         path_to_human_extended_database="data/db/interactionDB_human_extended.tsv",
+#     output:
+#         path_to_output_perturbations_to_perform="data/simulation/perturbations_to_perform.csv",
+#         path_to_output_expected_perturbed_pathways="data/simulation/expected_perturbed_pathways.csv",
+#     resources:
+#         slurm_partition = "cpu",
+#         runtime = 480,               # 8 hours
+#         mem_mb= 64_000,              # 64 GB
+#     shell:
+#         """
+#         Rscript {input.path_to_script} \
+#         {input.path_to_joined_simulation_parameters} \
+#         {input.path_to_cell_count_parameters} \
+#         {input.path_to_human_extended_database} \
+#         {output.path_to_output_perturbations_to_perform} \
+#         {output.path_to_output_expected_perturbed_pathways}
+#         """
 
 # NOTE: This rule is intentionally disabled (commented out) for reproducibility.
 # Script 2 (2_extract_genes_to_perturb_from_perturbations_to_perform.py) draws random
@@ -956,6 +965,62 @@ rule extract_ligands_and_targets:
 #         --path_to_perturbations_to_perform {input.path_to_perturbations_to_perform} \
 #         --path_to_gene_perturbations_to_perform {output.path_to_gene_perturbations_to_perform}
 #         """
+
+# The expected perturbed pathways of script 1 are defined per sampled ligand/target, but script 2 perturbs a single gene
+# of it, which can also be part of other ligands/targets (e.g. GABRB3 is a subunit of eleven GABA-A complexes). The next
+# two rules derive the expected perturbed pathways at the gene level and write them to a new file; the committed
+# expected_perturbed_pathways.csv is left untouched.
+
+rule export_producible_ligands_and_targets:
+    input:
+        path_to_script="src/1a_export_producible_ligands_and_targets.R",
+
+        path_to_joined_simulation_parameters="model/estimated_parameters_all_genes_combined.rds",
+        path_to_human_extended_database="data/db/interactionDB_human_extended.tsv",
+    output:
+        path_to_output_producible_ligands="data/simulation/producible_ligands.csv",
+        path_to_output_producible_targets="data/simulation/producible_targets.csv",
+    params:
+        seed=int(config.get("producibility_seed", 42)),
+    resources:
+        slurm_partition = "cpu",
+        runtime = 240,               # 4 hours
+        mem_mb= 64_000,              # 64 GB
+    shell:
+        """
+        Rscript {input.path_to_script} \
+        {input.path_to_joined_simulation_parameters} \
+        {input.path_to_human_extended_database} \
+        {params.seed} \
+        {output.path_to_output_producible_ligands} \
+        {output.path_to_output_producible_targets}
+        """
+
+rule extend_expected_perturbed_pathways:
+    input:
+        path_to_script="src/1b_extend_expected_perturbed_pathways.py",
+
+        path_to_gene_perturbations_to_perform="data/simulation/gene_perturbations_to_perform.csv",
+        path_to_human_extended_database="data/db/interactionDB_human_extended.tsv",
+        path_to_expected_perturbed_pathways="data/simulation/expected_perturbed_pathways.csv",
+        path_to_producible_ligands="data/simulation/producible_ligands.csv",
+        path_to_producible_targets="data/simulation/producible_targets.csv",
+    output:
+        path_to_output_expected_perturbed_pathways="data/simulation/expected_perturbed_pathways_gene_level.csv",
+    resources:
+        slurm_partition = "cpu",
+        runtime = 30,                # 30 minutes
+        mem_mb= 4_000,               # 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_gene_perturbations_to_perform {input.path_to_gene_perturbations_to_perform} \
+        --path_to_interaction_db {input.path_to_human_extended_database} \
+        --path_to_expected_perturbed_pathways {input.path_to_expected_perturbed_pathways} \
+        --path_to_producible_ligands {input.path_to_producible_ligands} \
+        --path_to_producible_targets {input.path_to_producible_targets} \
+        --path_to_output_expected_perturbed_pathways {output.path_to_output_expected_perturbed_pathways}
+        """
 
 ############ START OF SIMULATION RULES ############
 

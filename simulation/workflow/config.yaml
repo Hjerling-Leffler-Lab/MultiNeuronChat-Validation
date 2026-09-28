@@ -9,6 +9,9 @@ n_datasets: 10
 n_people_to_simulate: 60
 n_samples_per_group_and_sex: 40
 
+# Seed for re-creating the ligand/target producibility matrices (1a_export_producible_ligands_and_targets.R)
+producibility_seed: 42
+
 # Aggregation settings
 mean_types: ["mean", "tri_mean", "trim_mean"]
 trim_mean_fractions:
