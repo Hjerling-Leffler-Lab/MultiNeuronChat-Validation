@@ -262,7 +262,9 @@ def main():
                            fontsize=fontsize * 0.8)
 
     all_means_axs.set_xlim([-0.5, len(category_order) - 0.5])
-    all_means_axs.set_ylim([-50, max_y_lim])
+    all_means_axs.set_ylim([-1, max_y_lim])
+    # Small negative margin so near-zero boxes aren't clipped, but only label ticks from 0 upwards
+    all_means_axs.set_yticks([tick for tick in all_means_axs.get_yticks() if 0 <= tick <= max_y_lim])
     all_means_axs.set_title('MultiNeuronChat Timings', fontsize=fontsize)
 
     # Disable legend
