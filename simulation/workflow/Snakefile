@@ -224,6 +224,20 @@ rule plot_n_sweep:
             case=N_SWEEP_CASES,
         ),
         "results/tables/T5_pr_auc_vs_n_donors.xlsx",
+        expand(
+            "results/figs/precision_recall_n_sweep/tests/{mean_type}_{trim_mean_fraction}_{case}.pdf",
+            mean_type=["tri_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=N_SWEEP_CASES,
+        ),
+        expand(
+            "results/figs/precision_recall_n_sweep/filters/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}.pdf",
+            statistical_test=['KS', 'CVM', 'MannWhitneyU'],
+            mean_type=["tri_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=N_SWEEP_CASES,
+        ),
+        "results/tables/T6_precision_recall_vs_n_donors.xlsx",
 
 rule plot_precision_recall_plots:
     input:
@@ -1646,6 +1660,127 @@ rule create_pr_auc_vs_n_donors_table:
         --mean_types {params.mean_types} \
         --cases {params.cases} \
         --n_donors {params.n_donors}
+        """
+
+rule create_summary_statistics_n_sweep:
+    input:
+        path_to_script="src/plotting/plot_n_sweep_precision_recall_a.py",
+
+        paths_to_mnc_object=expand(
+            "results/MNC_results_n_sweep/{mean_type}_{trim_mean_fraction}/{case}/{n_donors}/{case}_{n_donors}_{dataset_index}.pkl",
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            case=lambda wildcards: wildcards.case,
+            n_donors=lambda wildcards: wildcards.n_donors,
+            dataset_index=range(0, N_DATASETS),
+        ),
+        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways_gene_level.csv"
+    output:
+        path_to_summary_df="results/figs/precision_recall_n_sweep/summary_dfs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl",
+    wildcard_constraints:
+        mean_type="mean|tri_mean|trim_mean",
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+        n_donors="[0-9]+",
+    resources:
+        slurm_partition="cpu",
+        runtime=30,                 # 30 min
+        mem_mb=4_000,               # 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+        --paths_to_mnc_object {input.paths_to_mnc_object} \
+        --path_to_expected_perturbations {input.path_to_expected_perturbations} \
+        --path_to_summary_df {output.path_to_summary_df} \
+        --mean_type {wildcards.mean_type} \
+        --case {wildcards.case} \
+        --n_donors {wildcards.n_donors}
+        """
+
+rule plot_precision_recall_vs_n_donors:
+    input:
+        path_to_script="src/plotting/plot_n_sweep_precision_recall_b.py",
+
+        paths_to_n_sweep_summary_dfs=expand(
+            "results/figs/precision_recall_n_sweep/summary_dfs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl",
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            case=lambda wildcards: wildcards.case,
+            n_donors=N_DONORS_SWEEP,
+        ),
+        # The full-cohort benchmark at proportion 1.0 is drawn as the largest cohort of the sweep.
+        paths_to_full_cohort_summary_dfs=expand(
+            "results/figs/precision_recall/summary_dfs/{mean_type}_{trim_mean_fraction}_{statistical_test}_{case}_1.0.pkl",
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            statistical_test=['KS', 'CVM', 'MannWhitneyU'],
+            case=lambda wildcards: wildcards.case,
+        ),
+        paths_to_n_sweep_pr_aucs=expand(
+            "results/figs/pr_curves_n_sweep/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl",
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            case=lambda wildcards: wildcards.case,
+            n_donors=N_DONORS_SWEEP,
+        ),
+        path_to_full_cohort_pr_aucs="results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_1.0.pkl",
+    output:
+        path_to_output_figure_tests="results/figs/precision_recall_n_sweep/tests/{mean_type}_{trim_mean_fraction}_{case}.pdf",
+        paths_to_output_figure_filters=[
+            f"results/figs/precision_recall_n_sweep/filters/{statistical_test}/{{mean_type}}_{{trim_mean_fraction}}_{{case}}.pdf"
+            for statistical_test in ['KS', 'CVM', 'MannWhitneyU']
+        ],
+    params:
+        path_to_n_sweep_pr_aucs="results/figs/pr_curves_n_sweep/summary_data/pr_aucs/",
+        path_to_full_cohort_pr_aucs="results/figs/pr_curves/summary_data/pr_aucs/",
+        n_donors=" ".join(map(str, N_DONORS_SWEEP)),
+        full_cohort_n_per_group=int(config.get("n_samples_per_group_and_sex", 40)) * 2,
+    wildcard_constraints:
+        mean_type="mean|tri_mean|trim_mean",
+        trim_mean_fraction="0|0\\.[0-9]+",
+        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
+    resources:
+        slurm_partition="cpu",
+        runtime=10,                 # 10 min
+        mem_mb=800,                 # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --paths_to_n_sweep_summary_dfs {input.paths_to_n_sweep_summary_dfs} \
+        --paths_to_full_cohort_summary_dfs {input.paths_to_full_cohort_summary_dfs} \
+        --path_to_n_sweep_pr_aucs {params.path_to_n_sweep_pr_aucs} \
+        --path_to_full_cohort_pr_aucs {params.path_to_full_cohort_pr_aucs} \
+        --mean_type {wildcards.mean_type} \
+        --trim_mean_fraction {wildcards.trim_mean_fraction} \
+        --case {wildcards.case} \
+        --n_donors {params.n_donors} \
+        --full_cohort_n_per_group {params.full_cohort_n_per_group} \
+        --path_to_output_figure_tests {output.path_to_output_figure_tests} \
+        --paths_to_output_figure_filters {output.paths_to_output_figure_filters}
+        """
+
+rule create_precision_recall_vs_n_donors_table:
+    input:
+        path_to_script="src/tables/create_n_sweep_precision_recall_table.py",
+
+        paths_to_summary_dfs=expand(
+            "results/figs/precision_recall_n_sweep/summary_dfs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl",
+            mean_type=["tri_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            case=N_SWEEP_CASES,
+            n_donors=N_DONORS_SWEEP,
+        ),
+    output:
+        path_to_table_excel="results/tables/T6_precision_recall_vs_n_donors.xlsx",
+    resources:
+        slurm_partition="cpu",
+        runtime=10,                 # 10 min
+        mem_mb=800,                 # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --paths_to_summary_dfs {input.paths_to_summary_dfs} \
+        --path_to_table_excel {output.path_to_table_excel}
         """
 
 ############ END OF POPULATION-SIZE (DONOR-COUNT) BENCHMARK RULES ############
