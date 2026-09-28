@@ -43,6 +43,36 @@ filter_display_names: dict[str, str] = {
     'Abundance-min0': 'Abundance (> 0)',
 }
 
+# Styling of the prefilters when they are drawn together in one panel. Hue encodes the filter family
+# (colour-blind-safe categorical slots, neutral grey for the unfiltered baseline) and the retention is a
+# secondary encoding, so identity never relies on colour alone: 'top10' is a solid line with filled
+# markers, 'min0' a dashed line with hollow markers.
+filter_colors: dict[str, str] = {
+    'None': '#3d3d3a',
+    'Wasserstein': '#eb6834',
+    'Variance-top10': '#2a78d6',
+    'Variance-min0': '#2a78d6',
+    'Abundance-top10': '#1baf7a',
+    'Abundance-min0': '#1baf7a',
+}
+filter_line_styles: dict[str, str] = {
+    'None': '-',
+    'Wasserstein': '-',
+    'Variance-top10': '-',
+    'Variance-min0': '--',
+    'Abundance-top10': '-',
+    'Abundance-min0': '--',
+}
+filter_markers: dict[str, str] = {
+    'None': 'o',
+    'Wasserstein': 'D',
+    'Variance-top10': 's',
+    'Variance-min0': 's',
+    'Abundance-top10': '^',
+    'Abundance-min0': '^',
+}
+filter_hollow_markers: set[str] = {'Variance-min0', 'Abundance-min0'}
+
 
 def make_test_label(filter_key: str, statistical_test: str) -> str:
     """

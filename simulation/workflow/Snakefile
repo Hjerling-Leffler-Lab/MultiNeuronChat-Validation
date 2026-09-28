@@ -42,7 +42,8 @@ rule run_all:
 rule plot_all:
     input:
         expand(
-            "results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}.pdf",
+            "results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/{filters}.pdf",
+            filters=["all_filters", "without_wasserstein", "wasserstein", "variance", "abundance"],
             mean_type=["tri_mean"],
             trim_mean_fraction=config["trim_mean_fractions"]["default"],
             statistical_test=['KS', 'CVM', 'MannWhitneyU'],
@@ -237,15 +238,19 @@ rule plot_precision_recall_plots:
             proportion=PROPORTIONS,
         ),
     output:
-        path_to_output_figure="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}.pdf"
+        path_to_output_figure_all_filters="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/all_filters.pdf",
+        path_to_output_figure_without_wasserstein="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/without_wasserstein.pdf",
+        path_to_output_figure_wasserstein="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/wasserstein.pdf",
+        path_to_output_figure_variance="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/variance.pdf",
+        path_to_output_figure_abundance="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/abundance.pdf",
     params:
         mean_type_to_plot=lambda wildcards: wildcards.mean_type,
         case_to_plot=lambda wildcards: wildcards.case,
         proportions_to_plot=" ".join(map(str, PROPORTIONS)),
         samples_in_dataset=int(config.get("n_samples_per_group_and_sex", 40))*2,
-        statistical_tests=lambda wildcards: wildcards.statistical_test,
-        width_of_figure_in_cm=8.5,
-        height_of_figure_in_cm=8.2/2,
+        statistical_test=lambda wildcards: wildcards.statistical_test,
+        width_of_figure_in_cm=14,
+        height_of_figure_in_cm=6.5,
         dpi=300,
         font_size=8,
         label_font_size=8,
@@ -263,12 +268,16 @@ rule plot_precision_recall_plots:
         """
         python {input.path_to_script} \
         --paths_to_summary_dfs {input.paths_to_summary_dfs} \
-        --path_to_output_figure {output.path_to_output_figure} \
+        --path_to_output_figure_all_filters {output.path_to_output_figure_all_filters} \
+        --path_to_output_figure_without_wasserstein {output.path_to_output_figure_without_wasserstein} \
+        --path_to_output_figure_wasserstein {output.path_to_output_figure_wasserstein} \
+        --path_to_output_figure_variance {output.path_to_output_figure_variance} \
+        --path_to_output_figure_abundance {output.path_to_output_figure_abundance} \
         --mean_type_to_plot {params.mean_type_to_plot} \
         --case_to_plot {params.case_to_plot} \
         --proportions_to_plot {params.proportions_to_plot} \
         --samples_in_dataset {params.samples_in_dataset} \
-        --statistical_tests {params.statistical_tests} \
+        --statistical_test {params.statistical_test} \
         --width_of_figure_in_cm {params.width_of_figure_in_cm} \
         --height_of_figure_in_cm {params.height_of_figure_in_cm} \
         --dpi {params.dpi} \
