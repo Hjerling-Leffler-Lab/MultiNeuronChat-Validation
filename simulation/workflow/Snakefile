@@ -143,6 +143,7 @@ rule plot_all:
 
         # Timing figures
         'results/figs/timing_results/timings.pdf',
+        'results/figs/timing_results/timings_no_masks.pdf',
         'results/figs/timing_results/legend.pdf',
 
         # Timing summary CSV and XLSX
@@ -542,6 +543,7 @@ rule plot_timings:
         )
     output:
         path_to_timing_figure = 'results/figs/timing_results/timings.pdf',
+        path_to_timing_figure_no_masks = 'results/figs/timing_results/timings_no_masks.pdf',
         path_to_timing_legend = 'results/figs/timing_results/legend.pdf',
     params:
         path_to_timing_results = 'results/Timing_results/',
@@ -562,6 +564,7 @@ rule plot_timings:
         python {input.path_to_script} \
         --path_to_all_timings {params.path_to_timing_results} \
         --path_to_timing_fig {output.path_to_timing_figure} \
+        --path_to_timing_fig_no_masks {output.path_to_timing_figure_no_masks} \
         --path_to_legend_fig {output.path_to_timing_legend} \
         --width_in_cm {params.width_in_cm} \
         --height_in_cm {params.height_in_cm} \

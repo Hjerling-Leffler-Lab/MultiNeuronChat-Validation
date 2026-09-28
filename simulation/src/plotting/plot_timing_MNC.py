@@ -13,6 +13,89 @@ from utils import cm
 import argparse
 
 
+def plot_timings(
+        all_timings_df: pd.DataFrame,
+        category_order: list[str],
+        category_labels: list[str],
+        divider_positions: list[float],
+        section_headers: list[tuple[float, float, str]],
+        color_palette,
+        path_to_fig: str,
+        width_in_cm: float,
+        height_in_cm: float,
+        fontsize: float,
+) -> plt.Axes:
+    # divider_positions: group boundaries in category-index space, halfway between the last index of one
+    # group and the first of the next; the last one (before the totals) is drawn darker.
+    # section_headers: (start_idx, end_idx, header) centred over each group's index span.
+    all_means_fig, all_means_axs = plt.subplots(1, 1, figsize=(width_in_cm * cm, height_in_cm * cm))
+
+    # TODO:
+    # 1. Change size of outlier + color them in the color of the mean type
+
+    sns.boxplot(
+        x='timing_type',
+        y='timing_result',
+        hue='mean',
+        data=all_timings_df,
+        order=category_order,
+        ax=all_means_axs,
+        linewidth=0.5,
+        flierprops=dict(marker='o', markersize=3, markeredgewidth=0.5),
+        palette=color_palette,
+        saturation=1,
+    )
+
+    # Step 1: get box patches (in visual order)
+    boxes = [patch for patch in all_means_axs.patches if isinstance(patch, mpatches.PathPatch)]
+
+    # Step 2: get fliers
+    fliers = [child for child in all_means_axs.get_children()
+              if isinstance(child, mlines.Line2D) and child.get_marker() == 'o']
+
+    # Step 3: pair them by position
+    # Note: every box usually has 1 associated flier (sometimes none)
+    # So we check len match or zip by min length
+    for box, flier in zip(boxes, fliers):
+        facecolor = box.get_facecolor()
+        flier.set_markerfacecolor(facecolor)
+        flier.set_markeredgecolor('black')  # optional for contrast
+
+    all_means_axs.set_xlabel('Timing Event', fontsize=fontsize)
+    all_means_axs.set_ylabel('Time in seconds', fontsize=fontsize)
+
+    all_means_axs.set_xticks(list(range(len(category_order))))
+    all_means_axs.set_xticklabels(category_labels, fontsize=fontsize * 0.8)
+
+    max_y = np.max(all_timings_df['timing_result'])
+    max_y_lim = max_y * 1.2
+
+    for divider in divider_positions:
+        alpha = 0.8 if divider == divider_positions[-1] else 0.5
+        all_means_axs.vlines(divider, 0, max_y_lim, color='black', linestyle='--', alpha=alpha)
+
+    for start_idx, end_idx, header in section_headers:
+        all_means_axs.text((start_idx + end_idx) / 2, max_y_lim * 0.95, header, ha='center', va='top',
+                           fontsize=fontsize * 0.8)
+
+    all_means_axs.set_xlim([-0.5, len(category_order) - 0.5])
+    all_means_axs.set_ylim([-1, max_y_lim])
+    # Small negative margin so near-zero boxes aren't clipped, but only label ticks from 0 upwards
+    all_means_axs.set_yticks([tick for tick in all_means_axs.get_yticks() if 0 <= tick <= max_y_lim])
+    all_means_axs.set_title('MultiNeuronChat Timings', fontsize=fontsize)
+
+    # Disable legend
+    all_means_axs.legend_.remove()
+
+    all_means_fig.tight_layout()
+
+    all_means_fig.savefig(path_to_fig, dpi=300, transparent=True)
+
+    plt.show()
+
+    return all_means_axs
+
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -23,6 +106,11 @@ def main():
     )
     parser.add_argument(
         '--path_to_timing_fig',
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        '--path_to_timing_fig_no_masks',
         type=str,
         required=True,
     )
@@ -64,6 +152,7 @@ def main():
 
     path_to_all_timings: str = args.path_to_all_timings
     path_to_timing_fig: str = args.path_to_timing_fig
+    path_to_timing_fig_no_masks: str = args.path_to_timing_fig_no_masks
     path_to_legend_fig: str = args.path_to_legend_fig
 
     width_in_cm: float = args.width_in_cm
@@ -75,6 +164,7 @@ def main():
     fontsize: float = args.fontsize
 
     os.makedirs(os.path.dirname(path_to_timing_fig), exist_ok=True)
+    os.makedirs(os.path.dirname(path_to_timing_fig_no_masks), exist_ok=True)
     os.makedirs(os.path.dirname(path_to_legend_fig), exist_ok=True)
 
     means: list[str] = ['mean_0', 'tri_mean_0', 'trim_mean_0.1', 'trim_mean_0.05']
@@ -199,82 +289,47 @@ def main():
         'Total\nMWU',
     ]
 
-    all_means_fig, all_means_axs = plt.subplots(1, 1, figsize=(width_in_cm * cm, height_in_cm * cm))
-
     color_palette = sns.color_palette('husl', len(means))
 
-    # TODO:
-    # 1. Change size of outlier + color them in the color of the mean type
-
-    sns.boxplot(
-        x='timing_type',
-        y='timing_result',
-        hue='mean',
-        data=all_timings_df,
-        order=category_order,
-        ax=all_means_axs,
-        linewidth=0.5,
-        flierprops=dict(marker='o', markersize=3, markeredgewidth=0.5),
-        palette=color_palette,
-        saturation=1,
+    # Full figure: communication scores, prefilter masks, significance, correction and total per test
+    all_means_axs = plot_timings(
+        all_timings_df=all_timings_df,
+        category_order=category_order,
+        category_labels=category_labels,
+        divider_positions=[0.5, 3.5, 6.5, 9.5],
+        section_headers=[
+            (1, 3, 'Prefilter Masks'),
+            (4, 6, 'Computation of Significance'),
+            (7, 9, 'Correction of P-Values'),
+            (10, 12, 'Total Time per Test'),
+        ],
+        color_palette=color_palette,
+        path_to_fig=path_to_timing_fig,
+        width_in_cm=width_in_cm,
+        height_in_cm=height_in_cm,
+        fontsize=fontsize,
     )
 
-    # Step 1: get box patches (in visual order)
-    boxes = [patch for patch in all_means_axs.patches if isinstance(patch, mpatches.PathPatch)]
-
-    # Step 2: get fliers
-    fliers = [child for child in all_means_axs.get_children()
-              if isinstance(child, mlines.Line2D) and child.get_marker() == 'o']
-
-    # Step 3: pair them by position
-    # Note: every box usually has 1 associated flier (sometimes none)
-    # So we check len match or zip by min length
-    for box, flier in zip(boxes, fliers):
-        facecolor = box.get_facecolor()
-        flier.set_markerfacecolor(facecolor)
-        flier.set_markeredgecolor('black')  # optional for contrast
-
-    all_means_axs.set_xlabel('Timing Event', fontsize=fontsize)
-    all_means_axs.set_ylabel('Time in seconds', fontsize=fontsize)
-
-    all_means_axs.set_xticks(list(range(len(category_order))))
-    all_means_axs.set_xticklabels(category_labels, fontsize=fontsize * 0.8)
-
-    max_y = np.max(all_timings_df['timing_result'])
-    max_y_lim = max_y * 1.2
-
-    # Group boundaries (in category-index space): Com.Scores | masks | significance | correction | total.
-    # Dividers sit halfway between the last index of one group and the first of the next.
-    divider_positions: list[float] = [0.5, 3.5, 6.5, 9.5]
-    for divider in divider_positions:
-        alpha = 0.8 if divider == 9.5 else 0.5
-        all_means_axs.vlines(divider, 0, max_y_lim, color='black', linestyle='--', alpha=alpha)
-
-    # Section headers centred over each group's index span.
-    section_headers: list[tuple[float, float, str]] = [
-        (1, 3, 'Prefilter Masks'),
-        (4, 6, 'Computation of Significance'),
-        (7, 9, 'Correction of P-Values'),
-        (10, 12, 'Total Time per Test'),
-    ]
-    for start_idx, end_idx, header in section_headers:
-        all_means_axs.text((start_idx + end_idx) / 2, max_y_lim * 0.95, header, ha='center', va='top',
-                           fontsize=fontsize * 0.8)
-
-    all_means_axs.set_xlim([-0.5, len(category_order) - 0.5])
-    all_means_axs.set_ylim([-1, max_y_lim])
-    # Small negative margin so near-zero boxes aren't clipped, but only label ticks from 0 upwards
-    all_means_axs.set_yticks([tick for tick in all_means_axs.get_yticks() if 0 <= tick <= max_y_lim])
-    all_means_axs.set_title('MultiNeuronChat Timings', fontsize=fontsize)
-
-    # Disable legend
-    all_means_axs.legend_.remove()
-
-    all_means_fig.tight_layout()
-
-    all_means_fig.savefig(path_to_timing_fig, dpi=300, transparent=True)
-
-    plt.show()
+    # Same figure without the prefilter masks
+    mask_categories: set[str] = {'wasserstein_mask', 'variance_mask', 'abundance_mask'}
+    no_mask_order: list[str] = [c for c in category_order if c not in mask_categories]
+    no_mask_labels: list[str] = [l for c, l in zip(category_order, category_labels) if c not in mask_categories]
+    plot_timings(
+        all_timings_df=all_timings_df[~all_timings_df['timing_type'].isin(mask_categories)],
+        category_order=no_mask_order,
+        category_labels=no_mask_labels,
+        divider_positions=[0.5, 3.5, 6.5],
+        section_headers=[
+            (1, 3, 'Computation of Significance'),
+            (4, 6, 'Correction of P-Values'),
+            (7, 9, 'Total Time per Test'),
+        ],
+        color_palette=color_palette,
+        path_to_fig=path_to_timing_fig_no_masks,
+        width_in_cm=width_in_cm,
+        height_in_cm=height_in_cm,
+        fontsize=fontsize,
+    )
 
     # Plot the legend separately
     legend_fig, legend_axs = plt.subplots(1, 1, figsize=(width_in_cm_legend * cm, height_in_cm_legend * cm))
