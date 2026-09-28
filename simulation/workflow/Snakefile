@@ -1292,6 +1292,7 @@ rule run_MultiNeuronChat:
         path_to_mnc_output_file=f"results/MNC_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
         path_to_wasserstein_dict_file=f"results/Wasserstein_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
         path_to_timing_dict_file=f"results/Timing_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
+    threads: 8
     params:
         mean_type=lambda wildcards: wildcards.mean_type,
         trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
@@ -1305,7 +1306,7 @@ rule run_MultiNeuronChat:
     resources:
         # TODO adjust memory and run-time
         slurm_partition="cpu",
-        runtime=720,              # 12 hours
+        runtime=120,             # 2 hours
         mem_mb=8_000,            # 8 GB
     shell:
         """
@@ -1414,6 +1415,7 @@ rule run_MultiNeuronChat_n_sweep:
         path_to_mnc_output_file=f"results/MNC_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
         path_to_wasserstein_dict_file=f"results/Wasserstein_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
         path_to_timing_dict_file=f"results/Timing_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
+    threads: 8
     params:
         mean_type=lambda wildcards: wildcards.mean_type,
         trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
@@ -1426,8 +1428,8 @@ rule run_MultiNeuronChat_n_sweep:
         dataset_index="[0-9]+",
     resources:
         slurm_partition="cpu",
-        runtime=360,             # 6 hours (small cohorts)
-        mem_mb=8_000,            # 8 GB
+        runtime=120,            # 2 hours
+        mem_mb=8_000,           # 8 GB
     shell:
         """
             python {input.path_to_script} \

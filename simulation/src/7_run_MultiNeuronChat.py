@@ -1,4 +1,5 @@
 import os
+import sys
 
 import multiprocessing
 
@@ -171,8 +172,9 @@ def main():
         'abundances': abundances_xr,
     }
 
-    print('Computing significance')
+    print('Computing significance', flush=True)
     for statistical_test in ['KS', 'CVM', 'MannWhitneyU']:
+        print(f'Significance Test: {statistical_test}', flush=True)
         start_time_statistical_test = time.time()
 
         mnc_object.compute_significance(
@@ -186,8 +188,10 @@ def main():
             end_time_statistical_test,
         )
 
-    print('Correcting p-values')
+
+    print('Correcting p-values', flush=True)
     for statistical_test in ['KS', 'CVM', 'MannWhitneyU']:
+        print(f'Significance Test: {statistical_test}', flush=True)
         start_time_correction = time.time()
         mnc_object.correct_p_values(statistical_test=statistical_test)
         end_time_correction = time.time()
@@ -197,16 +201,25 @@ def main():
             end_time_correction,
         )
 
+    print('Done correcting p-values, saving MNC object', flush=True)
+
     # Save the MultiNeuronChat object
     mnc_object.save(path_to_mnc_output_file)
+
+    print('Done saving MNC object, next savin wasserstein dictionary', flush=True)
 
     # Save wasserstein distances
     with open(path_to_wasserstein_dict_file, 'wb') as f:
         pickle.dump(wasserstein_dict, f)
 
+    print('Done saving wasserstein dictionary, next saving timing results', flush=True)
+
     # Save timings
     with open(path_to_timing_dict_file, 'wb') as f:
         pickle.dump(timings, f)
 
+    print('Done!', flush=True)
+
 if __name__ == "__main__":
     main()
+    sys.exit(0)
