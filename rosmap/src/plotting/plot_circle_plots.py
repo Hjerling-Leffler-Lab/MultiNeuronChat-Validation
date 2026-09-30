@@ -1,7 +1,7 @@
 import os
 
 from multineuronchat import MultiNeuronChatObject
-from multineuronchat.visualize import plot_p_value_differential_communication_circle_plot, plot_wasserstein_ranked_differential_communication_circle_plot, plot_aula_medica_plot
+from multineuronchat.visualize import plot_p_value_differential_communication_circle_plot
 
 import matplotlib.pyplot as plt
 

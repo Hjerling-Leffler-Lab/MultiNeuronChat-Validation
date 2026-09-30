@@ -1,24 +1,15 @@
-import seaborn as sns
-
-
 cm: float = 1/2.54
 
 statistical_test_short: dict[str, str] = {
     'KS': 'KS',
-    'Anderson': 'AD',
     'CVM': 'CVM',
     'MannWhitneyU': 'MWU'
 }
 
 statistical_test_colors: dict[str, str] = {
     'KS': '#ca0020',
-    'Anderson': '#f4a582',
     'CVM': '#92c5de',
     'MannWhitneyU': '#0571b0'
-}
-wasserstein_statistical_test_colors: dict[str, str] = {
-    x: y
-    for x, y in zip(['KS', 'Anderson', 'CVM', 'MannWhitneyU'], sns.color_palette('husl', n_colors=4))
 }
 
 cell_type_to_short: dict[str, str] = {

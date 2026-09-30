@@ -147,7 +147,6 @@ def main():
         legend_marker_edge_width=0.2,
         legend_n_cols=1,
         label_font_size=8,
-        # title='Perturbed Cell-Cell Interactions \n(Wasserstein Distance, 99th percentile)',
         title_font_size=12,
         arrow_thickness_factor=0.5,
         arrow_head_length=2,

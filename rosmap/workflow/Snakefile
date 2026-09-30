@@ -1,4 +1,4 @@
-container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.8.18.dev0"
+container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.9.5.dev0"
 
 statistical_tests = ["KS"]
 
@@ -14,12 +14,6 @@ rule run_all:
         expand("results/figs/coarse/{test}/pdf/p_value_circle_plot.pdf",test=statistical_tests),
         expand("results/figs/coarse/{test}/pdf/p_value_legend.pdf",test=statistical_tests),
         expand("results/figs/coarse/{test}/pdf/p_value_arrow_legend.pdf",test=statistical_tests),
-        "results/figs/coarse/wasserstein/png/wasserstein_circle_plot.png",
-        "results/figs/coarse/wasserstein/png/wasserstein_legend.png",
-        "results/figs/coarse/wasserstein/png/wasserstein_arrow_legend.png",
-        "results/figs/coarse/wasserstein/pdf/wasserstein_circle_plot.pdf",
-        "results/figs/coarse/wasserstein/pdf/wasserstein_legend.pdf",
-        "results/figs/coarse/wasserstein/pdf/wasserstein_arrow_legend.pdf",
 
 rule plot_all:
     input:
@@ -31,12 +25,6 @@ rule plot_all:
         expand("results/figs/coarse/{test}/pdf/p_value_circle_plot.pdf",test=statistical_tests),
         expand("results/figs/coarse/{test}/pdf/p_value_legend.pdf",test=statistical_tests),
         expand("results/figs/coarse/{test}/pdf/p_value_arrow_legend.pdf",test=statistical_tests),
-        "results/figs/coarse/wasserstein/png/wasserstein_circle_plot.png",
-        "results/figs/coarse/wasserstein/png/wasserstein_legend.png",
-        "results/figs/coarse/wasserstein/png/wasserstein_arrow_legend.png",
-        "results/figs/coarse/wasserstein/pdf/wasserstein_circle_plot.pdf",
-        "results/figs/coarse/wasserstein/pdf/wasserstein_legend.pdf",
-        "results/figs/coarse/wasserstein/pdf/wasserstein_arrow_legend.pdf",
 
 
 rule join_rosmap_data:
@@ -133,18 +121,14 @@ rule run_rosmap_coarse:
 
         path_to_subject_wise_normalized_loom="data/processed/coarse/joined_matrix_subsampled_refined_annotation.subject_wise_normalized.loom",
     output:
-        path_to_mnc_cell_type_no_mask="results/coarse/mnc_cell_type_no_mask.pkl",
         path_to_mnc_cell_type="results/coarse/mnc_cell_type.pkl",
-        path_to_mnc_grouping_by_no_mask="results/coarse/mnc_grouping_by_no_mask.pkl",
         path_to_mnc_grouping_by="results/coarse/mnc_grouping_by.pkl",
-        path_to_wasserstein_cell_type="results/coarse/wasserstein_cell_type.pkl",
-        path_to_wasserstein_grouping_by="results/coarse/wasserstein_grouping_by.pkl",
         path_to_timings="results/coarse/timings.pkl",
     params:
         chunk_size_to_use=4096,
         n_processes_to_use=8,
         min_n_cells_threshold_to_use=10,
-        significance_tests="KS Anderson CVM MannWhitneyU",
+        significance_tests=" ".join(statistical_tests),
     resources:
         slurm_partition="cpu",
         runtime=2880,# 48 hours
@@ -153,12 +137,8 @@ rule run_rosmap_coarse:
         """
         python {input.path_to_script} \
             --path_to_subject_wise_normalized_loom {input.path_to_subject_wise_normalized_loom} \
-            --path_to_mnc_cell_type_no_mask {output.path_to_mnc_cell_type_no_mask} \
             --path_to_mnc_cell_type {output.path_to_mnc_cell_type} \
-            --path_to_mnc_grouping_by_no_mask {output.path_to_mnc_grouping_by_no_mask} \
             --path_to_mnc_grouping_by {output.path_to_mnc_grouping_by} \
-            --path_to_wasserstein_cell_type {output.path_to_wasserstein_cell_type} \
-            --path_to_wasserstein_grouping_by {output.path_to_wasserstein_grouping_by} \
             --path_to_timings {output.path_to_timings} \
             --chunk_size_to_use {params.chunk_size_to_use} \
             --n_processes_to_use {params.n_processes_to_use} \
@@ -228,52 +208,6 @@ rule plot_p_value_circle_plots_coarse:
             --path_to_p_value_circle_plot_pdf {output.path_to_p_value_circle_plot_pdf} \
             --path_to_p_value_legend_pdf {output.path_to_p_value_legend_pdf} \
             --path_to_p_value_arrow_legend_pdf {output.path_to_p_value_arrow_legend_pdf} \
-            --statistical_test {params.statistical_test} \
-            --width_in_cm_main {params.width_in_cm_main} \
-            --height_in_cm_main {params.height_in_cm_main} \
-            --width_in_cm_legend_cell_type {params.width_in_cm_legend_cell_type}
-            --height_in_cm_legend_cell_type {params.height_in_cm_legend_cell_type} \
-            --width_in_cm_legend_arrow {params.width_in_cm_legend_arrow} \
-            --height_in_cm_legend_arrow {params.height_in_cm_legend_arrow}
-        """
-
-rule plot_wasserstein_circle_plots_coarse:
-    input:
-        path_to_script="src/c_plot_mnc_coarse_wasserstein_circle_plots.py",
-
-        path_to_wasserstein_object="results/coarse/wasserstein_cell_type.pkl"
-    output:
-        path_to_wasserstein_circle_plot_png="results/figs/coarse/wasserstein/png/wasserstein_circle_plot.png",
-        path_to_wasserstein_legend_png="results/figs/coarse/wasserstein/png/wasserstein_legend.png",
-        path_to_wasserstein_arrow_legend_png="results/figs/coarse/wasserstein/png/wasserstein_arrow_legend.png",
-        path_to_wasserstein_circle_plot_pdf="results/figs/coarse/wasserstein/pdf/wasserstein_circle_plot.pdf",
-        path_to_wasserstein_legend_pdf="results/figs/coarse/wasserstein/pdf/wasserstein_legend.pdf",
-        path_to_wasserstein_arrow_legend_pdf="results/figs/coarse/wasserstein/pdf/wasserstein_arrow_legend.pdf",
-    params:
-        statistical_test="KS",
-
-        width_in_cm_main=7,
-        height_in_cm_main=7,
-
-        width_in_cm_legend_cell_type=7,
-        height_in_cm_legend_cell_type=7,
-
-        width_in_cm_legend_arrow=3,
-        height_in_cm_legend_arrow=1.5,
-    resources:
-        slurm_partition="cpu",
-        runtime=5,# 5 minutes
-        mem_mb=4_000,# 4 GB
-    shell:
-        """
-        python {input.path_to_script} \
-            --path_to_wasserstein_object {input.path_to_wasserstein_object} \
-            --path_to_wasserstein_circle_plot_png {output.path_to_wasserstein_circle_plot_png} \
-            --path_to_wasserstein_legend_png {output.path_to_wasserstein_legend_png} \
-            --path_to_wasserstein_arrow_legend_png {output.path_to_wasserstein_arrow_legend_png} \
-            --path_to_wasserstein_circle_plot_pdf {output.path_to_wasserstein_circle_plot_pdf} \
-            --path_to_wasserstein_legend_pdf {output.path_to_wasserstein_legend_pdf} \
-            --path_to_wasserstein_arrow_legend_pdf {output.path_to_wasserstein_arrow_legend_pdf} \
             --statistical_test {params.statistical_test} \
             --width_in_cm_main {params.width_in_cm_main} \
             --height_in_cm_main {params.height_in_cm_main} \
