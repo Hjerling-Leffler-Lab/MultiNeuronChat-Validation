@@ -19,6 +19,8 @@ from utils import (
     filter_hollow_markers,
     parse_test_label,
     convert_cases_l2fc_label,
+    draw_beeswarm,
+    with_points_path,
 )
 
 import argparse
@@ -57,6 +59,15 @@ def load_full_cohort_df(paths_to_summary_dfs: list[str], n_per_group: int) -> pd
     return df[df['Filter'].isin(n_sweep_filter_keys)]
 
 
+def finite_values_per_n(df: pd.DataFrame, metric: str, n_per_group: list[int]) -> list[np.ndarray]:
+    """The finite per-dataset values of a metric, one array per cohort size."""
+    values_per_n: list[np.ndarray] = []
+    for n in n_per_group:
+        values: np.ndarray = df.loc[df['N Donors Per Group'] == n, metric].to_numpy(dtype=float)
+        values_per_n.append(values[np.isfinite(values)])
+    return values_per_n
+
+
 def summarise(df: pd.DataFrame, metric: str, n_per_group: list[int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Mean and std of a metric per cohort size, plus the number of datasets with a finite value. Precision is NaN for a
@@ -65,9 +76,7 @@ def summarise(df: pd.DataFrame, metric: str, n_per_group: list[int]) -> tuple[np
     means: list[float] = []
     stds: list[float] = []
     n_finite: list[int] = []
-    for n in n_per_group:
-        values: np.ndarray = df.loc[df['N Donors Per Group'] == n, metric].to_numpy(dtype=float)
-        values = values[np.isfinite(values)]
+    for values in finite_values_per_n(df, metric, n_per_group):
         means.append(np.mean(values) if len(values) > 0 else np.nan)
         stds.append(np.std(values) if len(values) > 0 else np.nan)
         n_finite.append(len(values))
@@ -98,12 +107,14 @@ def plot_filters_vs_n(
         height_in_cm: float,
         font_size: float,
         path_to_output_figure: str,
+        show_points: bool = False,
 ) -> None:
     """
     A3: precision (left) and recall (right) at BY-adjusted p < 0.05 against the cohort size, one line per prefilter.
+    With show_points, the value of every dataset is overlaid as a beeswarm and the lines are dodged further apart.
     """
     x_positions: np.ndarray = np.arange(len(n_per_group))
-    dodge_step: float = 0.06
+    dodge_step: float = 0.7 / len(n_sweep_filter_keys) if show_points else 0.06
     offsets: np.ndarray = (np.arange(len(n_sweep_filter_keys)) - (len(n_sweep_filter_keys) - 1) / 2) * dodge_step
 
     fig, (precision_ax, recall_ax) = plt.subplots(
@@ -112,12 +123,19 @@ def plot_filters_vs_n(
 
     test_df: pd.DataFrame = df[(df['Test'] == statistical_test) & (df['Case'] == case)]
 
+    # (axis, x, values, color) of every swarm, drawn once the layout is final.
+    swarms: list[tuple[plt.Axes, float, np.ndarray, str]] = []
+
     for filter_key, offset in zip(n_sweep_filter_keys, offsets):
         filter_df: pd.DataFrame = test_df[test_df['Filter'] == filter_key]
         color: str = filter_colors[filter_key]
 
         for metric, ax in (('Precision', precision_ax), ('Recall', recall_ax)):
             means, stds, _ = summarise(filter_df, metric, n_per_group)
+            swarms.extend(
+                (ax, x, values, color)
+                for x, values in zip(x_positions + offset, finite_values_per_n(filter_df, metric, n_per_group))
+            )
             ax.errorbar(
                 x=x_positions + offset,
                 y=means,
@@ -134,6 +152,7 @@ def plot_filters_vs_n(
                 elinewidth=0.8,
                 linewidth=1,
                 markersize=3.5,
+                zorder=2,
             )
 
     # The unfiltered baseline decides where precision is undefined for every filter it contains.
@@ -159,6 +178,11 @@ def plot_filters_vs_n(
         fontsize=font_size, loc='upper center', ncol=3, frameon=False, columnspacing=1.0, handlelength=2.5,
     )
     fig.tight_layout(rect=(0, 0, 1, 0.8))
+
+    if show_points:
+        for ax, x, values, color in swarms:
+            draw_beeswarm(ax, x, values, color=color, max_half_width=dodge_step * 0.45, marker_size=1.8)
+
     fig.savefig(path_to_output_figure)
     plt.close(fig)
 
@@ -173,6 +197,7 @@ def plot_tests_vs_n(
         font_size: float,
         path_to_output_figure: str,
         alpha: float = 0.05,
+        show_points: bool = False,
 ) -> None:
     """
     B1: without prefiltering, per test against the cohort size:
@@ -180,11 +205,12 @@ def plot_tests_vs_n(
     (b) recall and (c) precision of the calls at BY-adjusted p < alpha,
     (d) the detectability floor: the smallest number of triples that must reach the minimal attainable p-value
         together before BY can call anything (line), against the number of triples that actually reach it (markers).
+    With show_points, the value of every dataset is overlaid as a beeswarm in (a)-(d) and the tests are dodged
+    further apart.
     """
     x_positions: np.ndarray = np.arange(len(n_per_group))
-    dodge_step: float = 0.12
+    dodge_step: float = 0.25 if show_points else 0.12
     offsets: np.ndarray = (np.arange(len(statistical_tests)) - (len(statistical_tests) - 1) / 2) * dodge_step
-    rng = np.random.default_rng(0)
 
     fig, (auc_ax, recall_ax, precision_ax, floor_ax) = plt.subplots(
         1, 4, figsize=(width_in_cm * cm, height_in_cm * cm),
@@ -192,25 +218,30 @@ def plot_tests_vs_n(
 
     case_df: pd.DataFrame = df[(df['Case'] == case) & (df['Filter'] == 'None')]
 
+    # (axis, x, values, color) of every swarm, drawn once the layout is final.
+    swarms: list[tuple[plt.Axes, float, np.ndarray, str]] = []
+
     for statistical_test, offset in zip(statistical_tests, offsets):
         color: str = statistical_test_colors[statistical_test]
         test_df: pd.DataFrame = case_df[case_df['Test'] == statistical_test]
         line_kwargs = dict(
             color=color, marker=test_markers[statistical_test], markersize=3, linewidth=1, capsize=1.5,
-            capthick=0.8, elinewidth=0.8, label=statistical_test_short[statistical_test],
+            capthick=0.8, elinewidth=0.8, label=statistical_test_short[statistical_test], zorder=2,
         )
 
         auc_values: list[np.ndarray] = [np.asarray(pr_aucs[n][statistical_test], dtype=float) for n in n_per_group]
         auc_ax.errorbar(
             x_positions + offset, [v.mean() for v in auc_values], yerr=[v.std() for v in auc_values], **line_kwargs,
         )
-        for x, values in zip(x_positions + offset, auc_values):
-            jitter: np.ndarray = (rng.random(len(values)) - 0.5) * dodge_step * 0.6
-            auc_ax.scatter(x + jitter, values, color=color, s=2, alpha=0.4, linewidths=0, zorder=1)
+        swarms.extend((auc_ax, x, values, color) for x, values in zip(x_positions + offset, auc_values))
 
         for metric, ax in (('Recall', recall_ax), ('Precision', precision_ax)):
             means, stds, _ = summarise(test_df, metric, n_per_group)
             ax.errorbar(x_positions + offset, means, yerr=stds, **line_kwargs)
+            swarms.extend(
+                (ax, x, values, color)
+                for x, values in zip(x_positions + offset, finite_values_per_n(test_df, metric, n_per_group))
+            )
 
         # Observed triples at (or below) the floor, only where the floor binds (more than one triple needed).
         # Where one triple suffices, the floor is far below any realised p-value and the count carries no meaning.
@@ -219,7 +250,12 @@ def plot_tests_vs_n(
         binds: np.ndarray = needed > 1
         floor_ax.plot(
             (x_positions + offset)[binds], at_floor[binds], linestyle='none', marker=test_markers[statistical_test],
-            color=color, markersize=3.5, label=f'{statistical_test_short[statistical_test]}: at floor',
+            color=color, markersize=3.5, label=f'{statistical_test_short[statistical_test]}: at floor', zorder=2,
+        )
+        at_floor_values: list[np.ndarray] = finite_values_per_n(test_df, 'N At Floor', n_per_group)
+        swarms.extend(
+            (floor_ax, x, values, color)
+            for x, values, bind in zip(x_positions + offset, at_floor_values, binds) if bind
         )
 
     _, _, n_finite = summarise(case_df[case_df['Test'] == 'KS'], 'Precision', n_per_group)
@@ -260,6 +296,11 @@ def plot_tests_vs_n(
     fig.supxlabel('Donors per group (cases = controls)', fontsize=font_size)
     fig.text(0.01, 0.99, convert_cases_l2fc_label(case), ha='left', va='top', fontsize=font_size)
     fig.tight_layout(rect=(0, 0, 1, 0.88))
+
+    if show_points:
+        for ax, x, values, color in swarms:
+            draw_beeswarm(ax, x, values, color=color, max_half_width=dodge_step * 0.45, marker_size=1.8)
+
     fig.savefig(path_to_output_figure)
     plt.close(fig)
 
@@ -306,29 +347,35 @@ def main():
         pr_aucs[args.full_cohort_n_per_group] = pickle.load(f)
 
     os.makedirs(os.path.dirname(args.path_to_output_figure_tests), exist_ok=True)
-    plot_tests_vs_n(
-        df=df,
-        pr_aucs=pr_aucs,
-        case=args.case,
-        n_per_group=n_per_group,
-        width_in_cm=args.width_of_tests_figure_in_cm,
-        height_in_cm=args.height_of_figure_in_cm,
-        font_size=args.font_size,
-        path_to_output_figure=args.path_to_output_figure_tests,
-    )
+    for path, show_points in (
+            (args.path_to_output_figure_tests, False), (with_points_path(args.path_to_output_figure_tests), True),
+    ):
+        plot_tests_vs_n(
+            df=df,
+            pr_aucs=pr_aucs,
+            case=args.case,
+            n_per_group=n_per_group,
+            width_in_cm=args.width_of_tests_figure_in_cm,
+            height_in_cm=args.height_of_figure_in_cm,
+            font_size=args.font_size,
+            path_to_output_figure=path,
+            show_points=show_points,
+        )
 
     for statistical_test, path_to_output_figure in zip(statistical_tests, args.paths_to_output_figure_filters):
         os.makedirs(os.path.dirname(path_to_output_figure), exist_ok=True)
-        plot_filters_vs_n(
-            df=df,
-            statistical_test=statistical_test,
-            case=args.case,
-            n_per_group=n_per_group,
-            width_in_cm=args.width_of_filters_figure_in_cm,
-            height_in_cm=args.height_of_figure_in_cm,
-            font_size=args.font_size,
-            path_to_output_figure=path_to_output_figure,
-        )
+        for path, show_points in ((path_to_output_figure, False), (with_points_path(path_to_output_figure), True)):
+            plot_filters_vs_n(
+                df=df,
+                statistical_test=statistical_test,
+                case=args.case,
+                n_per_group=n_per_group,
+                width_in_cm=args.width_of_filters_figure_in_cm,
+                height_in_cm=args.height_of_figure_in_cm,
+                font_size=args.font_size,
+                path_to_output_figure=path,
+                show_points=show_points,
+            )
 
 
 if __name__ == '__main__':

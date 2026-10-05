@@ -13,6 +13,8 @@ from utils import (
     filter_markers,
     filter_hollow_markers,
     make_test_label,
+    draw_beeswarm,
+    with_points_path,
 )
 
 import argparse
@@ -59,11 +61,13 @@ def plot_filters(
         dpi: float,
         path_to_output_figure: str,
         show_figure: bool,
+        show_points: bool = False,
 ) -> None:
     """
     Draw precision (left) and recall (right) against the number of affected donors, with one line per prefilter
     in the same panel. Lines are dodged horizontally, so that filters with identical results (e.g. the '> 0'
-    filters and the unfiltered baseline) stay visible.
+    filters and the unfiltered baseline) stay visible. With show_points, the value of every dataset is overlaid as
+    a beeswarm and the lines are dodged further apart to make room for the swarms.
 
     :param precision_recall_df: joined summary dataframes of plot_precision_recall_a.py
     :param filter_keys: keys of filter_display_names to draw, in drawing order
@@ -75,7 +79,7 @@ def plot_filters(
     :param path_to_output_figure: path of the figure to write
     """
     x_positions: np.ndarray = np.arange(len(proportions_to_plot))
-    dodge_step: float = 0.06
+    dodge_step: float = 0.7 / len(filter_keys) if show_points else 0.06
     offsets: np.ndarray = (np.arange(len(filter_keys)) - (len(filter_keys) - 1) / 2) * dodge_step
 
     fig, (precision_ax, recall_ax) = plt.subplots(
@@ -86,10 +90,14 @@ def plot_filters(
         sharey=True,
     )
 
-    def mean_std_per_proportion(label: str, metric: str) -> tuple[list[float], list[float]]:
-        """Mean and std of a metric across datasets for one label, ordered by proportions_to_plot."""
+    def mean_std_per_proportion(label: str, metric: str) -> tuple[list[float], list[float], list[np.ndarray]]:
+        """
+        Mean and std of a metric across datasets for one label, ordered by proportions_to_plot, plus the finite
+        per-dataset values they summarise.
+        """
         means: list[float] = []
         stds: list[float] = []
+        values_per_proportion: list[np.ndarray] = []
         for proportion in proportions_to_plot:
             values: list[float] = precision_recall_df[
                 (precision_recall_df['Mean Type'] == mean_type_to_plot) &
@@ -102,14 +110,21 @@ def plot_filters(
             finite_values = finite_values[np.isfinite(finite_values)]
             means.append(np.mean(finite_values).item() if len(finite_values) > 0 else np.nan)
             stds.append(np.std(finite_values).item() if len(finite_values) > 0 else np.nan)
-        return means, stds
+            values_per_proportion.append(finite_values)
+        return means, stds, values_per_proportion
+
+    # (axis, x, values, color) of every swarm, drawn once the layout is final.
+    swarms: list[tuple[plt.Axes, float, np.ndarray, str]] = []
 
     for filter_key, offset in zip(filter_keys, offsets):
         label: str = make_test_label(filter_key, statistical_test)
         color: str = filter_colors[filter_key]
 
         for metric, metric_ax in (('Precision', precision_ax), ('Recall', recall_ax)):
-            means, stds = mean_std_per_proportion(label, metric)
+            means, stds, values_per_proportion = mean_std_per_proportion(label, metric)
+            swarms.extend(
+                (metric_ax, x, values, color) for x, values in zip(x_positions + offset, values_per_proportion)
+            )
 
             metric_ax.errorbar(
                 x=x_positions + offset,
@@ -127,6 +142,7 @@ def plot_filters(
                 elinewidth=0.8,
                 linewidth=1,
                 markersize=3.5,
+                zorder=2,
             )
 
     for metric, metric_ax in (('Precision', precision_ax), ('Recall', recall_ax)):
@@ -187,6 +203,10 @@ def plot_filters(
     )
 
     fig.tight_layout(rect=(0, 0, 1, 1 - legend_height))
+
+    if show_points:
+        for metric_ax, x, values, color in swarms:
+            draw_beeswarm(metric_ax, x, values, color=color, max_half_width=dodge_step * 0.45, marker_size=1.8)
 
     fig.savefig(
         path_to_output_figure,
@@ -332,22 +352,24 @@ def main():
 
     for path_to_output_figure, filter_keys in figures.items():
         os.makedirs(os.path.dirname(path_to_output_figure), exist_ok=True)
-        plot_filters(
-            precision_recall_df=precision_recall_df,
-            filter_keys=filter_keys,
-            statistical_test=statistical_test,
-            mean_type_to_plot=args.mean_type_to_plot,
-            case_to_plot=args.case_to_plot,
-            proportions_to_plot=sorted(args.proportions_to_plot),
-            samples_in_dataset=args.samples_in_dataset,
-            width_of_figure_in_cm=args.width_of_figure_in_cm,
-            height_of_figure_in_cm=args.height_of_figure_in_cm,
-            font_size=args.font_size,
-            label_font_size=args.label_font_size,
-            dpi=args.dpi,
-            path_to_output_figure=path_to_output_figure,
-            show_figure=args.show_figure,
-        )
+        for path, show_points in ((path_to_output_figure, False), (with_points_path(path_to_output_figure), True)):
+            plot_filters(
+                precision_recall_df=precision_recall_df,
+                filter_keys=filter_keys,
+                statistical_test=statistical_test,
+                mean_type_to_plot=args.mean_type_to_plot,
+                case_to_plot=args.case_to_plot,
+                proportions_to_plot=sorted(args.proportions_to_plot),
+                samples_in_dataset=args.samples_in_dataset,
+                width_of_figure_in_cm=args.width_of_figure_in_cm,
+                height_of_figure_in_cm=args.height_of_figure_in_cm,
+                font_size=args.font_size,
+                label_font_size=args.label_font_size,
+                dpi=args.dpi,
+                path_to_output_figure=path,
+                show_figure=args.show_figure,
+                show_points=show_points,
+            )
 
 
 if __name__ == '__main__':

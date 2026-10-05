@@ -1,7 +1,6 @@
 import numpy as np
-import pandas as pd
 
-from utils import cm, statistical_test_colors, load_curve_data
+from utils import cm, statistical_test_colors, load_curve_data, draw_beeswarm, with_points_path
 
 from scipy import stats
 
@@ -136,38 +135,44 @@ def main():
     std_precisions: list[np.ndarray] = [error_bands_dict[label][2] for label in curve_names]
     std_recalls: list[np.ndarray] = [error_bands_dict[label][3] for label in curve_names]
 
-    fig, axs = plt.subplots(1, 1, figsize=pr_curves_fig_size)
+    # Summary of the three tests; the variant with points also draws the PR curve of every dataset replicate.
+    for path, show_points in ((path_to_summary_pr_curves_fig, False), (with_points_path(path_to_summary_pr_curves_fig), True)):
+        fig, axs = plt.subplots(1, 1, figsize=pr_curves_fig_size)
 
-    for mean_precision, mean_recall, std_precision, std_recall, color, label in zip(
-            mean_precisions, mean_recalls, std_precisions, std_recalls, colors, curve_names
-    ):
-        auc_mean = np.mean(pr_aucs[label])
-        auc_std = np.std(pr_aucs[label])
+        for mean_precision, mean_recall, std_precision, std_recall, color, label in zip(
+                mean_precisions, mean_recalls, std_precisions, std_recalls, colors, curve_names
+        ):
+            auc_mean = np.mean(pr_aucs[label])
+            auc_std = np.std(pr_aucs[label])
 
-        axs.plot(mean_recall, mean_precision, label=f'{label} (AUC = {auc_mean:.2f} $\pm$ {auc_std:.2f})', color=color)
-        axs.fill_between(mean_recall, mean_precision - std_precision, mean_precision + std_precision, alpha=0.3,
-                         color=color)
+            if show_points:
+                for precision, recall, _ in curves[label]:
+                    axs.plot(recall, precision, color=color, alpha=0.3, linewidth=0.5)
 
-    axs.set_xlabel('Recall', fontsize=font_size * 1.5)
-    axs.set_ylabel('Precision', fontsize=font_size * 1.5)
+            axs.plot(mean_recall, mean_precision, label=f'{label} (AUC = {auc_mean:.2f} $\pm$ {auc_std:.2f})', color=color)
+            axs.fill_between(mean_recall, mean_precision - std_precision, mean_precision + std_precision, alpha=0.3,
+                             color=color)
 
-    # set ticks with precision 2
-    axs.set_xticks(np.round(np.arange(0, 1.01, 0.1), 2))
-    axs.set_yticks(np.round(np.arange(0, 1.01, 0.1), 2))
-    axs.set_xticklabels(axs.get_xticks(), fontsize=font_size)
-    axs.set_yticklabels(axs.get_yticks(), fontsize=font_size)
+        axs.set_xlabel('Recall', fontsize=font_size * 1.5)
+        axs.set_ylabel('Precision', fontsize=font_size * 1.5)
 
-    axs.legend(fontsize=font_size * 0.9)
+        # set ticks with precision 2
+        axs.set_xticks(np.round(np.arange(0, 1.01, 0.1), 2))
+        axs.set_yticks(np.round(np.arange(0, 1.01, 0.1), 2))
+        axs.set_xticklabels(axs.get_xticks(), fontsize=font_size)
+        axs.set_yticklabels(axs.get_yticks(), fontsize=font_size)
 
-    axs.set_xlim([0.0, 1.01])
-    axs.set_ylim([0.0, 1.01])
+        axs.legend(fontsize=font_size * 0.9)
 
-    # if title_composite_plot is not None:
-    #    axs.set_title(title_composite_plot, fontsize=font_size * 1.5)
+        axs.set_xlim([0.0, 1.01])
+        axs.set_ylim([0.0, 1.01])
 
-    plt.tight_layout()
-    plt.savefig(path_to_summary_pr_curves_fig)
-    plt.close(fig)
+        # if title_composite_plot is not None:
+        #    axs.set_title(title_composite_plot, fontsize=font_size * 1.5)
+
+        plt.tight_layout()
+        plt.savefig(path)
+        plt.close(fig)
 
     for mean_precision, mean_recall, std_precision, std_recall, color, label in zip(
             mean_precisions, mean_recalls, std_precisions, std_recalls, colors, curve_names
@@ -212,46 +217,7 @@ def main():
     colors = colors[0:len(curve_names)]
 
     # AUC box plots
-    fig, axs = plt.subplots(1, 1, figsize=pr_auc_fig_size)
     pr_aucs_values = [pr_aucs[label] for label in curve_names]
-
-    # create dataframe
-    pr_df = {
-        'Method': [],
-        'AUC': []
-    }
-    for label in curve_names:
-        for x in pr_aucs[label]:
-            short_label = label
-
-            if label == 'MannWhitneyU':
-                short_label = 'MWU'
-
-            pr_df['Method'].append(short_label)
-            pr_df['AUC'].append(x)
-    pr_df = pd.DataFrame(pr_df)
-    # sns.boxplot(x='Method', y='AUC', hue='Method', data=pr_df, ax=axs, palette=colors)
-
-    bplot = axs.boxplot(
-        pr_aucs_values,
-        labels=['KS', 'CVM', 'MWU'],
-        patch_artist=True,
-        medianprops=dict(color='black')
-    )
-
-    for patch, color in zip(bplot['boxes'], colors):
-        patch.set_facecolor(color)
-
-    axs.set_ylabel('AUC', fontsize=font_size * 1.5)
-    axs.set_xlabel('')
-
-    # axs.set_yticklabels(axs.get_yticks(), fontsize=font_size)
-    # axs.set_xticks(['KS', 'And', 'CVM', 'Wil'])
-
-    axs.tick_params(axis='both', which='major', labelsize=font_size)
-
-    # if title_auc_plot is not None:
-    #     axs.set_title(title_auc_plot, fontsize=font_size * 1.5)
 
     # Add significance
     for label in curve_names:
@@ -290,41 +256,70 @@ def main():
     cvm_mannwhitneyu_text = ['n.s.', '*', '**', '***'][
         int(cvm_mannwhitneyu < 0.05) + int(cvm_mannwhitneyu < 0.01) + int(cvm_mannwhitneyu < 0.001)]
 
-    # get x_tick locations (one per test: KS, CVM, MWU)
-    x_ticks = axs.get_xticks()
+    # Each AUC figure is drawn plain and with the PR AUC of every dataset replicate as a beeswarm over the boxes.
+    # The fliers are hidden in the variant with points, as they would be drawn twice.
+    for (path_to_fig, with_significance), show_points in [
+        (figure, show_points)
+        for figure in ((path_to_pr_aucs_fig, False), (path_to_pr_aucs_with_significance_fig, True))
+        for show_points in (False, True)
+    ]:
+        fig, axs = plt.subplots(1, 1, figsize=pr_auc_fig_size)
 
-    x1 = x_ticks[0]
-    x2 = x_ticks[1]
-    x3 = x_ticks[2]
+        bplot = axs.boxplot(
+            pr_aucs_values,
+            patch_artist=True,
+            medianprops=dict(color='black'),
+            showfliers=not show_points,
+        )
+        axs.set_xticks(range(1, len(pr_aucs_values) + 1), ['KS', 'CVM', 'MWU'])
 
-    y = 1
-    h = 0.07
-    col = 'black'
+        for patch, color in zip(bplot['boxes'], colors):
+            patch.set_facecolor(color)
 
-    axs.set_ylim([0, 1])
-    plt.tight_layout()
-    plt.savefig(path_to_pr_aucs_fig)
+        axs.set_ylabel('AUC', fontsize=font_size * 1.5)
+        axs.set_xlabel('')
 
-    # Significance ladder: adjacent pairs on the first rung, the KS–MWU span above them.
-    axs.plot([x1, x2], [y + h, y + h], lw=1.5, c=col)
-    axs.text((x1 + x2) * .5, y + h, ks_cvm_text, ha='center', va='bottom', color=col,
-             fontsize=font_size * 1)
+        axs.tick_params(axis='both', which='major', labelsize=font_size)
 
-    axs.plot([x2, x3], [y + h, y + h], lw=1.5, c=col)
-    axs.text((x2 + x3) * .5, y + h, cvm_mannwhitneyu_text, ha='center', va='bottom', color=col,
-             fontsize=font_size * 1)
+        # get x_tick locations (one per test: KS, CVM, MWU)
+        x_ticks = axs.get_xticks()
 
-    axs.plot([x1, x3], [y + 2 * h, y + 2 * h], lw=1.5, c=col)
-    axs.text((x1 + x3) * .5, y + 2 * h, ks_mannwhitneyu_text, ha='center', va='bottom', color=col,
-             fontsize=font_size * 1)
+        x1 = x_ticks[0]
+        x2 = x_ticks[1]
+        x3 = x_ticks[2]
 
-    axs.set_ylim([0, y + 3 * h])
-    axs.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+        y = 1
+        h = 0.07
+        col = 'black'
 
-    plt.tight_layout()
-    plt.savefig(path_to_pr_aucs_with_significance_fig)
-    plt.close(fig)
+        axs.set_ylim([0, 1])
 
+        if with_significance:
+            # Significance ladder: adjacent pairs on the first rung, the KS–MWU span above them.
+            axs.plot([x1, x2], [y + h, y + h], lw=1.5, c=col)
+            axs.text((x1 + x2) * .5, y + h, ks_cvm_text, ha='center', va='bottom', color=col,
+                     fontsize=font_size * 1)
+
+            axs.plot([x2, x3], [y + h, y + h], lw=1.5, c=col)
+            axs.text((x2 + x3) * .5, y + h, cvm_mannwhitneyu_text, ha='center', va='bottom', color=col,
+                     fontsize=font_size * 1)
+
+            axs.plot([x1, x3], [y + 2 * h, y + 2 * h], lw=1.5, c=col)
+            axs.text((x1 + x3) * .5, y + 2 * h, ks_mannwhitneyu_text, ha='center', va='bottom', color=col,
+                     fontsize=font_size * 1)
+
+            axs.set_ylim([0, y + 3 * h])
+            axs.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+
+        plt.tight_layout()
+
+        if show_points:
+            for x, values in zip(x_ticks, pr_aucs_values):
+                draw_beeswarm(axs, x, values, color='black', max_half_width=0.2, marker_size=2.5, alpha=0.7,
+                              edgecolor='white', zorder=3)
+
+        plt.savefig(path_to_fig if not show_points else with_points_path(path_to_fig))
+        plt.close(fig)
 
 if __name__ == '__main__':
     main()

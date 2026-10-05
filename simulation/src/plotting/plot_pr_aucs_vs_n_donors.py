@@ -4,7 +4,10 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from utils import cm, statistical_test_colors, load_curve_data, convert_mean_type_label, convert_cases_l2fc_label
+from utils import (
+    cm, statistical_test_colors, load_curve_data, convert_mean_type_label, convert_cases_l2fc_label, draw_beeswarm,
+    with_points_path,
+)
 
 import argparse
 
@@ -95,88 +98,87 @@ def main():
         case=case,
     )
 
-    fig, axs = plt.subplots(1, len(mean_types), figsize=fig_size, squeeze=False)
-    axs = axs[0]
+    def draw(path_to_figure: str, show_points: bool) -> None:
+        """Draw the figure; with show_points, overlay the PR AUC of every dataset replicate as a beeswarm."""
+        fig, axs = plt.subplots(1, len(mean_types), figsize=fig_size, squeeze=False)
+        axs = axs[0]
 
-    box_width = 0.8 / n_tests
-    x_positions: np.ndarray = np.arange(n_points) * 1.5
-    if plot_with_offset:
-        x_offset_per_test: list[float] = [-0.25 + i * box_width for i in range(n_tests)]
-    else:
-        x_offset_per_test = [0] * n_tests
+        box_width = 0.8 / n_tests
+        x_positions: np.ndarray = np.arange(n_points) * 1.5
+        if plot_with_offset:
+            x_offset_per_test: list[float] = [-0.25 + i * box_width for i in range(n_tests)]
+        else:
+            x_offset_per_test = [0] * n_tests
 
-    rng = np.random.default_rng(0)
+        for i, mean_type in enumerate(mean_types):
+            mean_type_label: str = convert_mean_type_label(mean_type)
 
-    for i, mean_type in enumerate(mean_types):
-        mean_type_label: str = convert_mean_type_label(mean_type)
+            for j, statistical_test in enumerate(statistical_tests):
+                mean_aucs: list[float] = []
+                std_aucs: list[float] = []
 
-        for j, statistical_test in enumerate(statistical_tests):
-            mean_aucs: list[float] = []
-            std_aucs: list[float] = []
+                for n in n_donors:
+                    replicate_aucs = pr_auc_data_dict[mean_type][n][statistical_test]
+                    mean_aucs.append(np.mean(replicate_aucs))
+                    std_aucs.append(np.std(replicate_aucs))
 
-            for n in n_donors:
-                replicate_aucs = pr_auc_data_dict[mean_type][n][statistical_test]
-                mean_aucs.append(np.mean(replicate_aucs))
-                std_aucs.append(np.std(replicate_aucs))
+                x_for_test = np.array([x + x_offset_per_test[j] for x in x_positions])
 
-            x_for_test = np.array([x + x_offset_per_test[j] for x in x_positions])
-
-            axs[i].errorbar(
-                x=x_for_test,
-                y=mean_aucs,
-                yerr=std_aucs,
-                label=statistical_test,
-                color=colors[j],
-                fmt='-o',
-                capsize=1.5,
-                capthick=1,
-                linewidth=1,
-                markersize=3,
-                zorder=2,
-            )
-
-            # Overlay individual replicate PR AUCs (editorial requirement: show data distribution)
-            for point_idx, n in enumerate(n_donors):
-                replicate_aucs = pr_auc_data_dict[mean_type][n][statistical_test]
-                jitter = (rng.random(len(replicate_aucs)) - 0.5) * box_width * 0.6
-                axs[i].scatter(
-                    x_for_test[point_idx] + jitter,
-                    replicate_aucs,
+                axs[i].errorbar(
+                    x=x_for_test,
+                    y=mean_aucs,
+                    yerr=std_aucs,
+                    label=statistical_test,
                     color=colors[j],
-                    s=2,
-                    alpha=0.4,
-                    linewidths=0,
-                    zorder=1,
+                    fmt='-o',
+                    capsize=1.5,
+                    capthick=1,
+                    linewidth=1,
+                    markersize=3,
+                    zorder=2,
                 )
 
-        axs[i].set_xticks(x_positions)
-        # Label ticks with the per-group donor count (n_donors covers both sexes).
-        axs[i].set_xticklabels([int(n * 2) for n in n_donors], fontsize=font_size)
+            axs[i].set_xticks(x_positions)
+            # Label ticks with the per-group donor count (n_donors covers both sexes).
+            axs[i].set_xticklabels([int(n * 2) for n in n_donors], fontsize=font_size)
 
-        axs[i].set_ylim([0, 1])
-        axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1])
-        if i == 0:
-            axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1], fontsize=font_size)
-        else:
-            axs[i].set_yticklabels([])
+            axs[i].set_ylim([0, 1])
+            axs[i].set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1])
+            if i == 0:
+                axs[i].set_yticklabels([0.0, 0.2, 0.4, 0.6, 0.8, 1], fontsize=font_size)
+            else:
+                axs[i].set_yticklabels([])
 
-        axs[i].set_title(mean_type_label, fontsize=font_size)
+            axs[i].set_title(mean_type_label, fontsize=font_size)
 
-        if i == 0:
-            if plot_legend:
-                axs[i].legend(loc='lower right', fontsize=font_size)
-            axs[i].set_ylabel('PR AUC', fontsize=font_size)
+            if i == 0:
+                if plot_legend:
+                    axs[i].legend(loc='lower right', fontsize=font_size)
+                axs[i].set_ylabel('PR AUC', fontsize=font_size)
 
-    if plot_case_title:
-        fig.text(0.5, 1 - 0.04, case_l2fc_label, ha='center', va='center', fontsize=font_size)
+        if plot_case_title:
+            fig.text(0.5, 1 - 0.04, case_l2fc_label, ha='center', va='center', fontsize=font_size)
 
-    fig.text(0.5, 0.04, 'Donors per group (cases = controls)', ha='center', va='center', fontsize=font_size)
+        fig.text(0.5, 0.04, 'Donors per group (cases = controls)', ha='center', va='center', fontsize=font_size)
 
-    fig.subplots_adjust(left=0.07, right=0.99, top=1 - 0.14, bottom=0.14, hspace=0, wspace=0.05)
+        fig.subplots_adjust(left=0.07, right=0.99, top=1 - 0.14, bottom=0.14, hspace=0, wspace=0.05)
 
-    plt.tight_layout()
-    plt.savefig(path_to_output_figure)
-    plt.close(fig)
+        plt.tight_layout()
+
+        if show_points:
+            for i, mean_type in enumerate(mean_types):
+                for j, statistical_test in enumerate(statistical_tests):
+                    for x, n in zip(x_positions, n_donors):
+                        draw_beeswarm(
+                            axs[i], x + x_offset_per_test[j], pr_auc_data_dict[mean_type][n][statistical_test],
+                            color=colors[j], max_half_width=box_width * 0.45,
+                        )
+
+        plt.savefig(path_to_figure)
+        plt.close(fig)
+
+    draw(path_to_output_figure, show_points=False)
+    draw(with_points_path(path_to_output_figure), show_points=True)
 
 
 if __name__ == '__main__':

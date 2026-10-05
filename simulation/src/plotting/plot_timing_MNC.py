@@ -8,7 +8,7 @@ import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
 import seaborn as sns
 
-from utils import cm
+from utils import cm, with_points_path
 
 import argparse
 
@@ -24,10 +24,13 @@ def plot_timings(
         width_in_cm: float,
         height_in_cm: float,
         fontsize: float,
+        show_points: bool = False,
 ) -> plt.Axes:
     # divider_positions: group boundaries in category-index space, halfway between the last index of one
     # group and the first of the next; the last one (before the totals) is drawn darker.
     # section_headers: (start_idx, end_idx, header) centred over each group's index span.
+    # show_points: overlay every run as a jittered strip (too many runs per box for a beeswarm) and hide the fliers,
+    # which would otherwise be drawn twice.
     all_means_fig, all_means_axs = plt.subplots(1, 1, figsize=(width_in_cm * cm, height_in_cm * cm))
 
     # TODO:
@@ -44,6 +47,7 @@ def plot_timings(
         flierprops=dict(marker='o', markersize=3, markeredgewidth=0.5),
         palette=color_palette,
         saturation=1,
+        showfliers=not show_points,
     )
 
     # Step 1: get box patches (in visual order)
@@ -60,6 +64,24 @@ def plot_timings(
         facecolor = box.get_facecolor()
         flier.set_markerfacecolor(facecolor)
         flier.set_markeredgecolor('black')  # optional for contrast
+
+    if show_points:
+        sns.stripplot(
+            x='timing_type',
+            y='timing_result',
+            hue='mean',
+            data=all_timings_df,
+            order=category_order,
+            ax=all_means_axs,
+            dodge=True,
+            jitter=0.06,
+            size=1,
+            alpha=0.35,
+            palette=['black'] * len(color_palette),
+            linewidth=0,
+            legend=False,
+            zorder=3,
+        )
 
     all_means_axs.set_xlabel('Timing Event', fontsize=fontsize)
     all_means_axs.set_ylabel('Time in seconds', fontsize=fontsize)
@@ -291,45 +313,54 @@ def main():
 
     color_palette = sns.color_palette('husl', len(means))
 
-    # Full figure: communication scores, prefilter masks, significance, correction and total per test
-    all_means_axs = plot_timings(
-        all_timings_df=all_timings_df,
-        category_order=category_order,
-        category_labels=category_labels,
-        divider_positions=[0.5, 3.5, 6.5, 9.5],
-        section_headers=[
-            (1, 3, 'Prefilter Masks'),
-            (4, 6, 'Computation of Significance'),
-            (7, 9, 'Correction of P-Values'),
-            (10, 12, 'Total Time per Test'),
-        ],
-        color_palette=color_palette,
-        path_to_fig=path_to_timing_fig,
-        width_in_cm=width_in_cm,
-        height_in_cm=height_in_cm,
-        fontsize=fontsize,
-    )
+    # Full figure: communication scores, prefilter masks, significance, correction and total per test.
+    # Each figure is drawn plain and with every run overlaid; the legend is taken from the plain one.
+    for path_to_fig, show_points in ((path_to_timing_fig, False), (with_points_path(path_to_timing_fig), True)):
+        axs = plot_timings(
+            all_timings_df=all_timings_df,
+            category_order=category_order,
+            category_labels=category_labels,
+            divider_positions=[0.5, 3.5, 6.5, 9.5],
+            section_headers=[
+                (1, 3, 'Prefilter Masks'),
+                (4, 6, 'Computation of Significance'),
+                (7, 9, 'Correction of P-Values'),
+                (10, 12, 'Total Time per Test'),
+            ],
+            color_palette=color_palette,
+            path_to_fig=path_to_fig,
+            width_in_cm=width_in_cm,
+            height_in_cm=height_in_cm,
+            fontsize=fontsize,
+            show_points=show_points,
+        )
+        if not show_points:
+            all_means_axs = axs
 
     # Same figure without the prefilter masks
     mask_categories: set[str] = {'wasserstein_mask', 'variance_mask', 'abundance_mask'}
     no_mask_order: list[str] = [c for c in category_order if c not in mask_categories]
     no_mask_labels: list[str] = [l for c, l in zip(category_order, category_labels) if c not in mask_categories]
-    plot_timings(
-        all_timings_df=all_timings_df[~all_timings_df['timing_type'].isin(mask_categories)],
-        category_order=no_mask_order,
-        category_labels=no_mask_labels,
-        divider_positions=[0.5, 3.5, 6.5],
-        section_headers=[
-            (1, 3, 'Computation of Significance'),
-            (4, 6, 'Correction of P-Values'),
-            (7, 9, 'Total Time per Test'),
-        ],
-        color_palette=color_palette,
-        path_to_fig=path_to_timing_fig_no_masks,
-        width_in_cm=width_in_cm,
-        height_in_cm=height_in_cm,
-        fontsize=fontsize,
-    )
+    for path_to_fig, show_points in (
+            (path_to_timing_fig_no_masks, False), (with_points_path(path_to_timing_fig_no_masks), True),
+    ):
+        plot_timings(
+            all_timings_df=all_timings_df[~all_timings_df['timing_type'].isin(mask_categories)],
+            category_order=no_mask_order,
+            category_labels=no_mask_labels,
+            divider_positions=[0.5, 3.5, 6.5],
+            section_headers=[
+                (1, 3, 'Computation of Significance'),
+                (4, 6, 'Correction of P-Values'),
+                (7, 9, 'Total Time per Test'),
+            ],
+            color_palette=color_palette,
+            path_to_fig=path_to_fig,
+            width_in_cm=width_in_cm,
+            height_in_cm=height_in_cm,
+            fontsize=fontsize,
+            show_points=show_points,
+        )
 
     # Plot the legend separately
     legend_fig, legend_axs = plt.subplots(1, 1, figsize=(width_in_cm_legend * cm, height_in_cm_legend * cm))

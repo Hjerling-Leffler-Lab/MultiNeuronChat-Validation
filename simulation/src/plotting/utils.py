@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -7,6 +9,8 @@ import pickle
 from multineuronchat import MultiNeuronChatObject
 
 import seaborn as sns
+
+from matplotlib.axes import Axes
 
 
 cm: float = 1/2.54
@@ -239,3 +243,98 @@ def convert_p_value_string_to_stars(p_value: float) -> str:
         return '*'
     else:
         return 'n.s.'
+
+def with_points_path(path: str) -> str:
+    """
+    Path of the variant of a figure that overlays the individual data points, next to the original figure.
+
+    :param path: e.g. 'results/figs/pr_auc_comparison/CASE_1.pdf'
+    :return: e.g. 'results/figs/pr_auc_comparison/CASE_1_with_points.pdf'
+    """
+    root, extension = os.path.splitext(path)
+    return f'{root}_with_points{extension}'
+
+
+def beeswarm_offsets(y: np.ndarray, diameter: float) -> np.ndarray:
+    """
+    Horizontal offsets that place markers of the given diameter without overlap, each as close to the centre line as
+    possible (greedy, from the lowest value up). y and diameter share one unit (display pixels).
+
+    :param y: marker positions along the value axis
+    :param diameter: marker diameter
+    :return: one horizontal offset per marker, in the unit of y
+    """
+    offsets: np.ndarray = np.zeros(len(y))
+    placed: list[int] = []
+    for idx in np.argsort(y, kind='stable'):
+        forbidden: list[tuple[float, float]] = []
+        for other in placed:
+            dy: float = y[idx] - y[other]
+            if abs(dy) < diameter:
+                dx: float = np.sqrt(diameter ** 2 - dy ** 2)
+                forbidden.append((offsets[other] - dx, offsets[other] + dx))
+        candidates: list[float] = [0.0] + [bound for interval in forbidden for bound in interval]
+        free: list[float] = [
+            c for c in candidates if not any(lower + 1e-9 < c < upper - 1e-9 for lower, upper in forbidden)
+        ]
+        # Closest to the centre line; ties alternate sides so the swarm stays symmetric.
+        offsets[idx] = min(free, key=lambda c: (round(abs(c), 6), (c < 0) == (len(placed) % 2 == 0)))
+        placed.append(idx)
+    return offsets
+
+
+def draw_beeswarm(
+        ax: Axes,
+        x: float,
+        values,
+        color,
+        max_half_width: float,
+        marker_size: float = 2.2,
+        alpha: float = 0.6,
+        edgecolor='none',
+        zorder: float = 1,
+) -> None:
+    """
+    Draw the individual data points of one group as a beeswarm centred on x. Non-finite values (e.g. the precision of
+    a dataset without any significant call) and, on a log axis, non-positive values are skipped.
+
+    The swarm is laid out in display space, so call this after the axis limits and the figure layout are final (right
+    before saving). The axis limits are frozen so the points do not rescale the axes.
+
+    :param x: centre of the swarm, in data units
+    :param values: the data points
+    :param max_half_width: the swarm is compressed horizontally if it would extend further than this from x (data units)
+    :param marker_size: marker diameter in points
+    """
+    ax.set_xlim(ax.get_xlim())
+    ax.set_ylim(ax.get_ylim())
+
+    # Points are drawn unclipped so that values on the axis limits show in full; values outside the limits (e.g. in
+    # the other panel of a broken axis) are dropped instead.
+    y_lower, y_upper = sorted(ax.get_ylim())
+    values = np.asarray(values, dtype=float)
+    values = values[np.isfinite(values) & (values >= y_lower) & (values <= y_upper)]
+    if ax.get_yscale() == 'log':
+        values = values[values > 0]
+    if len(values) == 0:
+        return
+
+    ax.figure.draw_without_rendering()
+
+    display: np.ndarray = ax.transData.transform(np.column_stack([np.full(len(values), x), values]))
+    diameter_px: float = marker_size * ax.figure.dpi / 72
+    offsets_px: np.ndarray = beeswarm_offsets(display[:, 1], diameter_px)
+
+    max_offset_px: float = abs(ax.transData.transform((x + max_half_width, 0))[0] - display[0, 0])
+    widest: float = np.max(np.abs(offsets_px))
+    if widest > max_offset_px:
+        offsets_px = offsets_px * max_offset_px / widest
+
+    x_data: np.ndarray = ax.transData.inverted().transform(
+        np.column_stack([display[:, 0] + offsets_px, display[:, 1]])
+    )[:, 0]
+
+    ax.scatter(
+        x_data, values, s=marker_size ** 2, color=color, alpha=alpha, edgecolors=edgecolor, linewidths=0.3,
+        zorder=zorder, clip_on=False,
+    )

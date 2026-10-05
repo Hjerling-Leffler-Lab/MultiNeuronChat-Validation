@@ -258,6 +258,11 @@ rule plot_precision_recall_plots:
         path_to_output_figure_wasserstein="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/wasserstein.pdf",
         path_to_output_figure_variance="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/variance.pdf",
         path_to_output_figure_abundance="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/abundance.pdf",
+        # Variants with the individual data points overlaid, written next to each figure by the same script.
+        paths_to_output_figures_with_points=[
+            f"results/figs/precision_recall/{{statistical_test}}/{{mean_type}}_{{trim_mean_fraction}}_{{case}}/{figure}_with_points.pdf"
+            for figure in ["all_filters", "without_wasserstein", "wasserstein", "variance", "abundance"]
+        ],
     params:
         mean_type_to_plot=lambda wildcards: wildcards.mean_type,
         case_to_plot=lambda wildcards: wildcards.case,
@@ -408,6 +413,10 @@ rule plot_pr_curves_and_auc:
         path_to_pr_curves_MannWhitneyU_fig='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf',
         path_to_pr_aucs_with_significance_fig='results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary_with_significance.pdf',
         path_to_pr_aucs_fig='results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary.pdf',
+        # Variants with the individual data points overlaid, written next to each figure by the same script.
+        path_to_summary_pr_curves_fig_with_points='results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary_with_points.pdf',
+        path_to_pr_aucs_with_significance_fig_with_points='results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary_with_significance_with_points.pdf',
+        path_to_pr_aucs_fig_with_points='results/figs/pr_aucs/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary_with_points.pdf',
     params:
         pr_curves_width_of_figure_in_cm=8,
         pr_curves_height_of_figure_in_cm=8,
@@ -492,6 +501,8 @@ rule plot_pr_auc_comparision_of_mean_types:
         )
     output:
         path_to_output_figure='results/figs/pr_auc_comparison/{case}.pdf',
+        # Variants with the individual data points overlaid, written next to each figure by the same script.
+        path_to_output_figure_with_points='results/figs/pr_auc_comparison/{case}_with_points.pdf',
     params:
         width_in_cm=20,
         height_in_cm=8,
@@ -545,6 +556,9 @@ rule plot_timings:
         path_to_timing_figure = 'results/figs/timing_results/timings.pdf',
         path_to_timing_figure_no_masks = 'results/figs/timing_results/timings_no_masks.pdf',
         path_to_timing_legend = 'results/figs/timing_results/legend.pdf',
+        # Variants with the individual data points overlaid, written next to each figure by the same script.
+        path_to_timing_figure_with_points = 'results/figs/timing_results/timings_with_points.pdf',
+        path_to_timing_figure_no_masks_with_points = 'results/figs/timing_results/timings_no_masks_with_points.pdf',
     params:
         path_to_timing_results = 'results/Timing_results/',
 
@@ -1601,6 +1615,8 @@ rule plot_pr_aucs_vs_n_donors:
         ),
     output:
         path_to_output_figure='results/figs/pr_auc_vs_n_donors/{case}.pdf',
+        # Variants with the individual data points overlaid, written next to each figure by the same script.
+        path_to_output_figure_with_points='results/figs/pr_auc_vs_n_donors/{case}_with_points.pdf',
     params:
         path_to_curves='results/figs/pr_curves_n_sweep/summary_data/curves/',
         path_to_pr_aucs='results/figs/pr_curves_n_sweep/summary_data/pr_aucs/',
@@ -1731,6 +1747,12 @@ rule plot_precision_recall_vs_n_donors:
         path_to_output_figure_tests="results/figs/precision_recall_n_sweep/tests/{mean_type}_{trim_mean_fraction}_{case}.pdf",
         paths_to_output_figure_filters=[
             f"results/figs/precision_recall_n_sweep/filters/{statistical_test}/{{mean_type}}_{{trim_mean_fraction}}_{{case}}.pdf"
+            for statistical_test in ['KS', 'CVM', 'MannWhitneyU']
+        ],
+        # Variants with the individual data points overlaid, written next to each figure by the same script.
+        path_to_output_figure_tests_with_points="results/figs/precision_recall_n_sweep/tests/{mean_type}_{trim_mean_fraction}_{case}_with_points.pdf",
+        paths_to_output_figure_filters_with_points=[
+            f"results/figs/precision_recall_n_sweep/filters/{statistical_test}/{{mean_type}}_{{trim_mean_fraction}}_{{case}}_with_points.pdf"
             for statistical_test in ['KS', 'CVM', 'MannWhitneyU']
         ],
     params:
