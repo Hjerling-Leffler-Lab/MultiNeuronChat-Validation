@@ -156,6 +156,9 @@ rule plot_all:
         # Path to PR AUCs summary table
         path_to_pr_auc_summary_table_excel="results/tables/T4_pr_aucs_summary_table.xlsx",
 
+        # Median PR AUC per averaging mode, trimean tested against the others
+        path_to_averaging_mode_comparison_table_excel="results/tables/T4_averaging_mode_comparison.xlsx",
+
         path_to_ks_figure= expand(
             "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf",
             mean_type=['mean', 'tri_mean'],
@@ -673,6 +676,39 @@ rule create_pr_auc_summary_table:
         python {input.path_to_script} \
         --path_to_summary_pkls {params.path_to_summary_pkls} \
         --path_to_pr_auc_summary_table_excel {output.path_to_pr_auc_summary_table_excel}
+        """
+
+rule create_averaging_mode_comparison_table:
+    input:
+        path_to_script = 'src/tables/create_averaging_mode_comparison_table.py',
+
+        path_to_pr_aucs_outputs_mean_and_tri_mean=expand(
+            'results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=CASES,
+            proportion=PROPORTIONS
+        ),
+        path_to_pr_aucs_outputs_trim_mean=expand(
+            'results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            case=CASES,
+            proportion=PROPORTIONS
+        ),
+    output:
+        path_to_comparison_table_excel="results/tables/T4_averaging_mode_comparison.xlsx",
+    params:
+        path_to_summary_pkls="results/figs/pr_curves/summary_data/pr_aucs/"
+    resources:
+        slurm_partition = "cpu",
+        runtime = 10,               # 10 min
+        mem_mb = 800,             # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_summary_pkls {params.path_to_summary_pkls} \
+        --path_to_comparison_table_excel {output.path_to_comparison_table_excel}
         """
 
 
