@@ -159,6 +159,9 @@ rule plot_all:
         # Median PR AUC per averaging mode, trimean tested against the others
         path_to_averaging_mode_comparison_table_excel="results/tables/T4_averaging_mode_comparison.xlsx",
 
+        # Friedman test and pairwise post hoc ranking KS, CvM and MWU on the trimean PR AUCs
+        path_to_friedman_table_excel="results/tables/T4_statistical_test_friedman.xlsx",
+
         path_to_ks_figure= expand(
             "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf",
             mean_type=['mean', 'tri_mean'],
@@ -709,6 +712,33 @@ rule create_averaging_mode_comparison_table:
         python {input.path_to_script} \
         --path_to_summary_pkls {params.path_to_summary_pkls} \
         --path_to_comparison_table_excel {output.path_to_comparison_table_excel}
+        """
+
+rule create_statistical_test_friedman_table:
+    input:
+        path_to_script = 'src/tables/create_statistical_test_friedman_table.py',
+
+        path_to_pr_aucs_outputs=expand(
+            'results/figs/pr_curves/summary_data/pr_aucs/tri_mean_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=CASES,
+            proportion=PROPORTIONS
+        ),
+    output:
+        path_to_friedman_table_excel="results/tables/T4_statistical_test_friedman.xlsx",
+    params:
+        path_to_summary_pkls="results/figs/pr_curves/summary_data/pr_aucs/",
+        mean_type=f"tri_mean_{config['trim_mean_fractions']['default'][0]}",
+    resources:
+        slurm_partition = "cpu",
+        runtime = 10,               # 10 min
+        mem_mb = 800,             # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_summary_pkls {params.path_to_summary_pkls} \
+        --mean_type {params.mean_type} \
+        --path_to_friedman_table_excel {output.path_to_friedman_table_excel}
         """
 
 
