@@ -44,6 +44,10 @@ rule plot_all:
         expand("results/figs/{resolution}/{test}/{ext}/significant_vs_severity.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
         expand("results/figs/{resolution}/{test}/{ext}/significant_vs_confounders.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
 
+        # One file per significant tetrad (and panel), for assembling main and supplementary figures
+        expand("results/figs/{resolution}/{test}/{ext}/single_panels/{plot}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"],
+            plot=["significant_boxplots", "ligand_target_decomposition", "significant_ecdfs", "significant_vs_clinical"]),
+
 
 rule join_rosmap_data:
     input:
@@ -248,6 +252,8 @@ rule plot_significant_boxplots:
         path_to_boxplots_png="results/figs/{resolution}/{test}/png/significant_boxplots.png",
         path_to_boxplots_pdf="results/figs/{resolution}/{test}/pdf/significant_boxplots.pdf",
         path_to_significant_tetrads_csv="results/figs/{resolution}/{test}/significant_tetrads.csv",
+        path_to_single_panel_dir_png=directory("results/figs/{resolution}/{test}/png/single_panels/significant_boxplots"),
+        path_to_single_panel_dir_pdf=directory("results/figs/{resolution}/{test}/pdf/single_panels/significant_boxplots"),
     wildcard_constraints:
         resolution="|".join(resolutions),
     params:
@@ -264,6 +270,8 @@ rule plot_significant_boxplots:
             --path_to_boxplots_png {output.path_to_boxplots_png} \
             --path_to_boxplots_pdf {output.path_to_boxplots_pdf} \
             --path_to_significant_tetrads_csv {output.path_to_significant_tetrads_csv} \
+            --path_to_single_panel_dir_png {output.path_to_single_panel_dir_png} \
+            --path_to_single_panel_dir_pdf {output.path_to_single_panel_dir_pdf} \
             --statistical_test {params.statistical_test} \
             --significance_threshold {params.significance_threshold}
         """
@@ -276,6 +284,8 @@ rule plot_ligand_target_decomposition:
     output:
         path_to_decomposition_png="results/figs/{resolution}/{test}/png/ligand_target_decomposition.png",
         path_to_decomposition_pdf="results/figs/{resolution}/{test}/pdf/ligand_target_decomposition.pdf",
+        path_to_single_panel_dir_png=directory("results/figs/{resolution}/{test}/png/single_panels/ligand_target_decomposition"),
+        path_to_single_panel_dir_pdf=directory("results/figs/{resolution}/{test}/pdf/single_panels/ligand_target_decomposition"),
     wildcard_constraints:
         resolution="|".join(resolutions),
     params:
@@ -291,6 +301,8 @@ rule plot_ligand_target_decomposition:
             --path_to_mnc_object {input.path_to_mnc_object} \
             --path_to_decomposition_png {output.path_to_decomposition_png} \
             --path_to_decomposition_pdf {output.path_to_decomposition_pdf} \
+            --path_to_single_panel_dir_png {output.path_to_single_panel_dir_png} \
+            --path_to_single_panel_dir_pdf {output.path_to_single_panel_dir_pdf} \
             --statistical_test {params.statistical_test} \
             --significance_threshold {params.significance_threshold}
         """
@@ -303,6 +315,8 @@ rule plot_significant_ecdfs:
     output:
         path_to_ecdfs_png="results/figs/{resolution}/{test}/png/significant_ecdfs.png",
         path_to_ecdfs_pdf="results/figs/{resolution}/{test}/pdf/significant_ecdfs.pdf",
+        path_to_single_panel_dir_png=directory("results/figs/{resolution}/{test}/png/single_panels/significant_ecdfs"),
+        path_to_single_panel_dir_pdf=directory("results/figs/{resolution}/{test}/pdf/single_panels/significant_ecdfs"),
     wildcard_constraints:
         resolution="|".join(resolutions),
     params:
@@ -318,6 +332,8 @@ rule plot_significant_ecdfs:
             --path_to_mnc_object {input.path_to_mnc_object} \
             --path_to_ecdfs_png {output.path_to_ecdfs_png} \
             --path_to_ecdfs_pdf {output.path_to_ecdfs_pdf} \
+            --path_to_single_panel_dir_png {output.path_to_single_panel_dir_png} \
+            --path_to_single_panel_dir_pdf {output.path_to_single_panel_dir_pdf} \
             --statistical_test {params.statistical_test} \
             --significance_threshold {params.significance_threshold}
         """
@@ -365,6 +381,8 @@ rule plot_significant_vs_clinical:
         path_to_severity_pdf="results/figs/{resolution}/{test}/pdf/significant_vs_severity.pdf",
         path_to_confounders_png="results/figs/{resolution}/{test}/png/significant_vs_confounders.png",
         path_to_confounders_pdf="results/figs/{resolution}/{test}/pdf/significant_vs_confounders.pdf",
+        path_to_single_panel_dir_png=directory("results/figs/{resolution}/{test}/png/single_panels/significant_vs_clinical"),
+        path_to_single_panel_dir_pdf=directory("results/figs/{resolution}/{test}/pdf/single_panels/significant_vs_clinical"),
     wildcard_constraints:
         resolution="|".join(resolutions),
     params:
@@ -385,6 +403,8 @@ rule plot_significant_vs_clinical:
             --path_to_severity_pdf {output.path_to_severity_pdf} \
             --path_to_confounders_png {output.path_to_confounders_png} \
             --path_to_confounders_pdf {output.path_to_confounders_pdf} \
+            --path_to_single_panel_dir_png {output.path_to_single_panel_dir_png} \
+            --path_to_single_panel_dir_pdf {output.path_to_single_panel_dir_pdf} \
             --statistical_test {params.statistical_test} \
             --significance_threshold {params.significance_threshold} \
             --cell_type_label_column {params.cell_type_label_column}

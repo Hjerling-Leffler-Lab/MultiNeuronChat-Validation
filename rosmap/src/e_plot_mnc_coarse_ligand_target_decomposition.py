@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 import argparse
 
-from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, format_p_value
+from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, format_p_value, tetrad_file_stem, save_single_panel
 
 parser = argparse.ArgumentParser(description='Decompose the communication score of every significant tetrad into ligand and target abundance.')
 
@@ -25,6 +25,17 @@ parser.add_argument(
 )
 parser.add_argument(
     '--path_to_decomposition_pdf',
+    type=str,
+    required=True,
+)
+parser.add_argument(
+    '--path_to_single_panel_dir_png',
+    type=str,
+    required=True,
+    help='Directory receiving one ligand, target and score figure per significant tetrad, for assembling main and supplementary figures.'
+)
+parser.add_argument(
+    '--path_to_single_panel_dir_pdf',
     type=str,
     required=True,
 )
@@ -53,6 +64,8 @@ args = parser.parse_args()
 path_to_mnc_object: str = args.path_to_mnc_object
 path_to_decomposition_png: str = args.path_to_decomposition_png
 path_to_decomposition_pdf: str = args.path_to_decomposition_pdf
+path_to_single_panel_dir_png: str = args.path_to_single_panel_dir_png
+path_to_single_panel_dir_pdf: str = args.path_to_single_panel_dir_pdf
 
 statistical_test: str = args.statistical_test
 significance_threshold: float = args.significance_threshold
@@ -101,11 +114,28 @@ def drop_nan(values: np.ndarray) -> np.ndarray:
     return values[~np.isnan(values)]
 
 
+def get_decomposition_panels(mnc_object: MultiNeuronChatObject, row) -> list[tuple[str, list[np.ndarray], str, str]]:
+    """(name, values per condition, title, y label) of the ligand, target and score panel of one tetrad."""
+    condition_names = mnc_object.condition_names
+    source_short = cell_type_to_short.get(row.source, row.source)
+    receiver_short = cell_type_to_short.get(row.receiver, row.receiver)
+    ligand_values = [drop_nan(mnc_object.ligand_abundance_dict[c].loc[:, row.source, row.interaction].to_numpy()) for c in condition_names]
+    target_values = [drop_nan(mnc_object.target_abundance_dict[c].loc[:, row.receiver, row.interaction].to_numpy()) for c in condition_names]
+    score_values = [drop_nan(mnc_object.communication_score_dict[c].loc[:, row.source, row.receiver, row.interaction].to_numpy()) for c in condition_names]
+    return [
+        ('ligand', ligand_values, f'{row.interaction}\nLigand in {source_short}', 'Abundance'),
+        ('target', target_values, f'{row.interaction}\nTarget in {receiver_short}', 'Abundance'),
+        ('score', score_values, f'Score {source_short} → {receiver_short}\n{format_p_value(row.p_adj)}', 'Communication score'),
+    ]
+
+
 def main():
     for output_path in [path_to_decomposition_png, path_to_decomposition_pdf]:
         output_dir = os.path.dirname(output_path)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+    for single_panel_dir in [path_to_single_panel_dir_png, path_to_single_panel_dir_pdf]:
+        os.makedirs(single_panel_dir, exist_ok=True)
 
     mnc_object: MultiNeuronChatObject = MultiNeuronChatObject.load(path_to_mnc_object)
     significant: pd.DataFrame = get_significant_tetrads(mnc_object, statistical_test, significance_threshold)
@@ -122,18 +152,8 @@ def main():
     )
 
     for row_axs, row in zip(axs, significant.itertuples()):
-        source_short = cell_type_to_short.get(row.source, row.source)
-        receiver_short = cell_type_to_short.get(row.receiver, row.receiver)
-        ligand_values = [drop_nan(mnc_object.ligand_abundance_dict[c].loc[:, row.source, row.interaction].to_numpy()) for c in condition_names]
-        target_values = [drop_nan(mnc_object.target_abundance_dict[c].loc[:, row.receiver, row.interaction].to_numpy()) for c in condition_names]
-        score_values = [drop_nan(mnc_object.communication_score_dict[c].loc[:, row.source, row.receiver, row.interaction].to_numpy()) for c in condition_names]
-
-        plot_condition_boxes(row_axs[0], ligand_values, condition_names, f'{row.interaction}\nLigand in {source_short}')
-        plot_condition_boxes(row_axs[1], target_values, condition_names, f'{row.interaction}\nTarget in {receiver_short}')
-        plot_condition_boxes(
-            row_axs[2], score_values, condition_names,
-            f'Score {source_short} → {receiver_short}\n{format_p_value(row.p_adj)}',
-        )
+        for ax, (_, values, title, _) in zip(row_axs, get_decomposition_panels(mnc_object, row)):
+            plot_condition_boxes(ax, values, condition_names, title)
 
         row_axs[0].set_ylabel('Abundance', fontsize=7)
         row_axs[2].set_ylabel('Communication score', fontsize=7)
@@ -142,6 +162,14 @@ def main():
     fig.savefig(path_to_decomposition_png, dpi=300)
     fig.savefig(path_to_decomposition_pdf, dpi=300)
     plt.close(fig)
+
+    for row in significant.itertuples():
+        file_stem = tetrad_file_stem(row.source, row.receiver, row.interaction)
+        for name, values, title, y_label in get_decomposition_panels(mnc_object, row):
+            fig, ax = plt.subplots(1, 1, figsize=(width_in_cm_per_panel * cm, height_in_cm_per_panel * cm))
+            plot_condition_boxes(ax, values, condition_names, title)
+            ax.set_ylabel(y_label, fontsize=7)
+            save_single_panel(fig, path_to_single_panel_dir_png, path_to_single_panel_dir_pdf, f'{file_stem}__{name}')
 
 
 if __name__ == '__main__':

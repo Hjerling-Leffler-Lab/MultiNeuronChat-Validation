@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 import argparse
 
-from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, format_p_value
+from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, format_p_value, tetrad_file_stem, save_single_panel
 
 parser = argparse.ArgumentParser(description='Plot NCI vs AD empirical CDFs of the communication score for every significant tetrad.')
 
@@ -27,6 +27,17 @@ parser.add_argument(
 )
 parser.add_argument(
     '--path_to_ecdfs_pdf',
+    type=str,
+    required=True,
+)
+parser.add_argument(
+    '--path_to_single_panel_dir_png',
+    type=str,
+    required=True,
+    help='Directory receiving one figure per significant tetrad, for assembling main and supplementary figures.'
+)
+parser.add_argument(
+    '--path_to_single_panel_dir_pdf',
     type=str,
     required=True,
 )
@@ -60,6 +71,8 @@ args = parser.parse_args()
 path_to_mnc_object: str = args.path_to_mnc_object
 path_to_ecdfs_png: str = args.path_to_ecdfs_png
 path_to_ecdfs_pdf: str = args.path_to_ecdfs_pdf
+path_to_single_panel_dir_png: str = args.path_to_single_panel_dir_png
+path_to_single_panel_dir_pdf: str = args.path_to_single_panel_dir_pdf
 
 statistical_test: str = args.statistical_test
 significance_threshold: float = args.significance_threshold
@@ -98,6 +111,8 @@ def main():
         output_dir = os.path.dirname(output_path)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+    for single_panel_dir in [path_to_single_panel_dir_png, path_to_single_panel_dir_pdf]:
+        os.makedirs(single_panel_dir, exist_ok=True)
 
     mnc_object: MultiNeuronChatObject = MultiNeuronChatObject.load(path_to_mnc_object)
     significant: pd.DataFrame = get_significant_tetrads(mnc_object, statistical_test, significance_threshold)
@@ -128,6 +143,15 @@ def main():
     fig.savefig(path_to_ecdfs_png, dpi=300)
     fig.savefig(path_to_ecdfs_pdf, dpi=300)
     plt.close(fig)
+
+    for row in significant.itertuples():
+        fig, ax = plt.subplots(1, 1, figsize=(width_in_cm_per_panel * cm, height_in_cm_per_panel * cm))
+        plot_ecdf(ax, mnc_object, row.source, row.receiver, row.interaction, row.p_adj)
+        ax.set_ylabel('Cumulative fraction of donors', fontsize=7)
+        ax.set_xlabel('Communication score', fontsize=7)
+        # Below the curves and above the p-value, the only area the ECDFs never cross
+        ax.legend(fontsize=6, frameon=False, loc='lower right', bbox_to_anchor=(1.0, 0.1), handlelength=1.2)
+        save_single_panel(fig, path_to_single_panel_dir_png, path_to_single_panel_dir_pdf, tetrad_file_stem(row.source, row.receiver, row.interaction))
 
 
 if __name__ == '__main__':

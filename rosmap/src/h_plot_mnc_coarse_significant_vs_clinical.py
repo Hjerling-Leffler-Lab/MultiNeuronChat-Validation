@@ -1,5 +1,7 @@
 import os
 
+from typing import Callable
+
 import numpy as np
 import pandas as pd
 
@@ -13,7 +15,7 @@ import matplotlib.pyplot as plt
 
 import argparse
 
-from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, format_p_value
+from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, format_p_value, tetrad_file_stem, save_single_panel
 
 parser = argparse.ArgumentParser(description='Relate the communication score of every significant tetrad to disease severity and potential confounders.')
 
@@ -60,6 +62,17 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
+    '--path_to_single_panel_dir_png',
+    type=str,
+    required=True,
+    help='Directory receiving one figure per significant tetrad and clinical variable, for assembling main and supplementary figures.'
+)
+parser.add_argument(
+    '--path_to_single_panel_dir_pdf',
+    type=str,
+    required=True,
+)
+parser.add_argument(
     '--statistical_test',
     type=str,
     required=True,
@@ -89,6 +102,8 @@ path_to_severity_png: str = args.path_to_severity_png
 path_to_severity_pdf: str = args.path_to_severity_pdf
 path_to_confounders_png: str = args.path_to_confounders_png
 path_to_confounders_pdf: str = args.path_to_confounders_pdf
+path_to_single_panel_dir_png: str = args.path_to_single_panel_dir_png
+path_to_single_panel_dir_pdf: str = args.path_to_single_panel_dir_pdf
 
 statistical_test: str = args.statistical_test
 significance_threshold: float = args.significance_threshold
@@ -175,58 +190,72 @@ def style_axis(ax, x_label: str):
     ax.spines[['top', 'right']].set_visible(False)
 
 
-def plot_severity_row(row_axs, df: pd.DataFrame, condition_names):
+def get_severity_panels(df: pd.DataFrame, condition_names) -> list[tuple[str, Callable]]:
+    """(name, drawing function) of the Braak, CERAD and MMSE panel of one tetrad."""
     # Severity is confounded with diagnosis, so the within-AD trend is reported next to the pooled one
     ad_df = df[df['condition'] == condition_names[1]]
 
-    boxes_per_level(row_axs[0], df, 'braaksc', braak_labels)
-    scatter_by_condition(row_axs[0], df, 'braaksc', condition_names, jitter=0.2)
-    annotate(row_axs[0], [spearman_text(df, 'braaksc', 'All'), spearman_text(ad_df, 'braaksc', condition_names[1])])
-    style_axis(row_axs[0], 'Braak stage')
+    def braak(ax):
+        boxes_per_level(ax, df, 'braaksc', braak_labels)
+        scatter_by_condition(ax, df, 'braaksc', condition_names, jitter=0.2)
+        annotate(ax, [spearman_text(df, 'braaksc', 'All'), spearman_text(ad_df, 'braaksc', condition_names[1])])
+        style_axis(ax, 'Braak stage')
 
-    boxes_per_level(row_axs[1], df, 'ceradsc', cerad_labels)
-    scatter_by_condition(row_axs[1], df, 'ceradsc', condition_names, jitter=0.2)
-    annotate(row_axs[1], [spearman_text(df, 'ceradsc', 'All'), spearman_text(ad_df, 'ceradsc', condition_names[1])])
-    style_axis(row_axs[1], 'CERAD score')
+    def cerad(ax):
+        boxes_per_level(ax, df, 'ceradsc', cerad_labels)
+        scatter_by_condition(ax, df, 'ceradsc', condition_names, jitter=0.2)
+        annotate(ax, [spearman_text(df, 'ceradsc', 'All'), spearman_text(ad_df, 'ceradsc', condition_names[1])])
+        style_axis(ax, 'CERAD score')
 
-    scatter_by_condition(row_axs[2], df, 'cts_mmse30_lv', condition_names)
-    annotate(row_axs[2], [spearman_text(df, 'cts_mmse30_lv', 'All'), spearman_text(ad_df, 'cts_mmse30_lv', condition_names[1])])
-    style_axis(row_axs[2], 'MMSE (last visit)')
+    def mmse(ax):
+        scatter_by_condition(ax, df, 'cts_mmse30_lv', condition_names)
+        annotate(ax, [spearman_text(df, 'cts_mmse30_lv', 'All'), spearman_text(ad_df, 'cts_mmse30_lv', condition_names[1])])
+        style_axis(ax, 'MMSE (last visit)')
+
+    return [('braak', braak), ('cerad', cerad), ('mmse', mmse)]
 
 
-def plot_confounder_row(row_axs, df: pd.DataFrame, condition_names, source_short: str, receiver_short: str):
+def get_confounder_panels(df: pd.DataFrame, condition_names, source_short: str, receiver_short: str) -> list[tuple[str, Callable]]:
+    """(name, drawing function) of the age, PMI, sex and cell-count panels of one tetrad."""
     # Confounders are assessed within each condition: a pooled correlation would only re-detect the group difference
     def per_condition_spearman(x_column: str) -> list[str]:
         return [spearman_text(df[df['condition'] == c], x_column, c) for c in condition_names]
 
-    scatter_by_condition(row_axs[0], df, 'age_death', condition_names, jitter=0.2)
-    annotate(row_axs[0], per_condition_spearman('age_death'))
-    style_axis(row_axs[0], 'Age at death (90 = 90+)')
+    def age(ax):
+        scatter_by_condition(ax, df, 'age_death', condition_names, jitter=0.2)
+        annotate(ax, per_condition_spearman('age_death'))
+        style_axis(ax, 'Age at death (90 = 90+)')
 
-    scatter_by_condition(row_axs[1], df, 'pmi', condition_names)
-    annotate(row_axs[1], per_condition_spearman('pmi'))
-    style_axis(row_axs[1], 'Post-mortem interval (h)')
+    def pmi(ax):
+        scatter_by_condition(ax, df, 'pmi', condition_names)
+        annotate(ax, per_condition_spearman('pmi'))
+        style_axis(ax, 'Post-mortem interval (h)')
 
-    boxes_per_level(row_axs[2], df, 'msex', sex_labels)
-    scatter_by_condition(row_axs[2], df, 'msex', condition_names, jitter=0.2)
-    sex_lines = []
-    for condition in condition_names:
-        condition_df = df[df['condition'] == condition]
-        female, male = condition_df.loc[condition_df['msex'] == 0, 'score'], condition_df.loc[condition_df['msex'] == 1, 'score']
-        if len(female) > 0 and len(male) > 0:
-            sex_lines.append(f'{condition}: MWU {format_p_value(stats.mannwhitneyu(female, male).pvalue, prefix="p")}')
-    annotate(row_axs[2], sex_lines)
-    style_axis(row_axs[2], 'Sex')
+    def sex(ax):
+        boxes_per_level(ax, df, 'msex', sex_labels)
+        scatter_by_condition(ax, df, 'msex', condition_names, jitter=0.2)
+        sex_lines = []
+        for condition in condition_names:
+            condition_df = df[df['condition'] == condition]
+            female, male = condition_df.loc[condition_df['msex'] == 0, 'score'], condition_df.loc[condition_df['msex'] == 1, 'score']
+            if len(female) > 0 and len(male) > 0:
+                sex_lines.append(f'{condition}: MWU {format_p_value(stats.mannwhitneyu(female, male).pvalue, prefix="p")}')
+        annotate(ax, sex_lines)
+        style_axis(ax, 'Sex')
 
-    scatter_by_condition(row_axs[3], df, 'n_source_cells', condition_names)
-    annotate(row_axs[3], per_condition_spearman('n_source_cells'))
-    row_axs[3].set_xscale('log')
-    style_axis(row_axs[3], f'# {source_short} cells')
+    def n_source_cells(ax):
+        scatter_by_condition(ax, df, 'n_source_cells', condition_names)
+        annotate(ax, per_condition_spearman('n_source_cells'))
+        ax.set_xscale('log')
+        style_axis(ax, f'# {source_short} cells')
 
-    scatter_by_condition(row_axs[4], df, 'n_receiver_cells', condition_names)
-    annotate(row_axs[4], per_condition_spearman('n_receiver_cells'))
-    row_axs[4].set_xscale('log')
-    style_axis(row_axs[4], f'# {receiver_short} cells')
+    def n_receiver_cells(ax):
+        scatter_by_condition(ax, df, 'n_receiver_cells', condition_names)
+        annotate(ax, per_condition_spearman('n_receiver_cells'))
+        ax.set_xscale('log')
+        style_axis(ax, f'# {receiver_short} cells')
+
+    return [('age', age), ('pmi', pmi), ('sex', sex), ('n_source_cells', n_source_cells), ('n_receiver_cells', n_receiver_cells)]
 
 
 def main():
@@ -235,6 +264,8 @@ def main():
         output_dir = os.path.dirname(output_path)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+    for single_panel_dir in [path_to_single_panel_dir_png, path_to_single_panel_dir_pdf]:
+        os.makedirs(single_panel_dir, exist_ok=True)
 
     mnc_object: MultiNeuronChatObject = MultiNeuronChatObject.load(path_to_mnc_object)
     significant: pd.DataFrame = get_significant_tetrads(mnc_object, statistical_test, significance_threshold)
@@ -271,12 +302,27 @@ def main():
         if n_missing_clinical > 0:
             print(f'Warning: {n_missing_clinical} donors without clinical data for {row.source} -> {row.receiver} {row.interaction}')
 
-        plot_severity_row(severity_row_axs, df, condition_names)
-        plot_confounder_row(confounders_row_axs, df, condition_names, source_short, receiver_short)
+        severity_panels = get_severity_panels(df, condition_names)
+        confounder_panels = get_confounder_panels(df, condition_names, source_short, receiver_short)
+        for ax, (_, draw) in zip(severity_row_axs, severity_panels):
+            draw(ax)
+        for ax, (_, draw) in zip(confounders_row_axs, confounder_panels):
+            draw(ax)
 
         row_label = f'{source_short} → {receiver_short}\n{row.interaction}\n{format_p_value(row.p_adj)}'
         severity_row_axs[0].set_ylabel(f'{row_label}\n\nCommunication score', fontsize=6)
         confounders_row_axs[0].set_ylabel(f'{row_label}\n\nCommunication score', fontsize=6)
+
+        file_stem = tetrad_file_stem(row.source, row.receiver, row.interaction)
+        for name, draw in severity_panels + confounder_panels:
+            fig, ax = plt.subplots(1, 1, figsize=(width_in_cm_per_panel * cm, height_in_cm_per_panel * cm))
+            draw(ax)
+            ax.set_title(f'{source_short} → {receiver_short}\n{row.interaction}', fontsize=7)
+            ax.set_ylabel('Communication score', fontsize=7)
+            # Headroom so the statistics text does not cover donors; no legend, the NCI/AD colours match the boxplot and ECDF panels
+            y_min, y_max = ax.get_ylim()
+            ax.set_ylim(y_min, y_max + 0.3 * (y_max - y_min))
+            save_single_panel(fig, path_to_single_panel_dir_png, path_to_single_panel_dir_pdf, f'{file_stem}__{name}')
 
     severity_axs.flat[-1].legend(fontsize=6, frameon=False, loc='lower right', markerscale=2)
     confounders_axs.flat[-1].legend(fontsize=6, frameon=False, loc='lower right', markerscale=2)
