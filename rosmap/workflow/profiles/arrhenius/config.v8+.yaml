@@ -1,0 +1,30 @@
+# Lab Snakemake profile for Arrhenius (Snakemake >= 8 + snakemake-executor-plugin-slurm).
+# Copy this directory to <repo>/workflow/profiles/arrhenius/ and run, inside tmux on the login node:
+#   ml Python/3.13.5
+#   source /nobackup/proj/disk/naiss2026-3-553/apps/envs/snakemake-9.27.0/bin/activate
+#   snakemake --profile workflow/profiles/arrhenius
+executor: slurm
+
+# Max concurrent Slurm jobs (no per-user QOS limit on Arrhenius; be considerate).
+jobs: 200
+
+# Apptainer image cache must be on shared project storage: the controller pulls on the
+# login node and compute nodes run the images. Never $HOME (Apptainer refuses it there).
+software-deployment-method: apptainer
+apptainer-prefix: "/nobackup/proj/disk/naiss2026-3-553/apps/apptainer"
+apptainer-args: "--bind /nobackup/proj/disk/naiss2026-3-553"
+
+default-resources:
+  slurm_account: "naiss2026-3-553-cpu"
+  slurm_partition: "cpu"      # use "fat" in set-resources for rules needing > ~750 GB
+  runtime: 60                 # minutes; max 4320 (3 days)
+  mem_mb: 2765                # = 1 core's share. If you raise mem_mb, raise threads to ceil(mem_mb / 2765)
+
+# Resubmit failed jobs once (e.g. transient node problems); rules can scale resources with `attempt`.
+retries: 1
+
+# Slurm/Lustre can be slow to show finished outputs.
+latency-wait: 60
+
+rerun-incomplete: true
+printshellcmds: true
