@@ -48,6 +48,10 @@ rule plot_all:
         expand("results/figs/{resolution}/{test}/{ext}/single_panels/{plot}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"],
             plot=["significant_boxplots", "ligand_target_decomposition", "significant_ecdfs", "significant_vs_clinical"]),
 
+        # Source data for submission; the donor ID mapping is controlled-access and must not be published
+        expand("results/tables/{resolution}/rosmap_tetrad_results_and_per_donor_values.xlsx",resolution=resolutions),
+        expand("results/tables/{resolution}/donor_id_mapping.DO_NOT_PUBLISH.csv",resolution=resolutions),
+
 
 rule join_rosmap_data:
     input:
@@ -408,4 +412,31 @@ rule plot_significant_vs_clinical:
             --statistical_test {params.statistical_test} \
             --significance_threshold {params.significance_threshold} \
             --cell_type_label_column {params.cell_type_label_column}
+        """
+
+rule create_source_data_tables:
+    input:
+        path_to_script="src/i_create_mnc_coarse_source_data_tables.py",
+
+        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
+    output:
+        path_to_source_data_xlsx="results/tables/{resolution}/rosmap_tetrad_results_and_per_donor_values.xlsx",
+        path_to_donor_id_mapping_csv="results/tables/{resolution}/donor_id_mapping.DO_NOT_PUBLISH.csv",
+    wildcard_constraints:
+        resolution="|".join(resolutions),
+    params:
+        statistical_tests=" ".join(plot_thresholds),
+        significance_thresholds=" ".join(str(threshold) for threshold in plot_thresholds.values()),
+    resources:
+        slurm_partition="core",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_source_data_xlsx {output.path_to_source_data_xlsx} \
+            --path_to_donor_id_mapping_csv {output.path_to_donor_id_mapping_csv} \
+            --statistical_tests {params.statistical_tests} \
+            --significance_thresholds {params.significance_thresholds}
         """
