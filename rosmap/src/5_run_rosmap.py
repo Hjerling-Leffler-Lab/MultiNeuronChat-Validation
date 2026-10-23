@@ -1,4 +1,5 @@
 import os
+import sys
 
 import time
 
@@ -96,7 +97,7 @@ def run_mnc(cell_type_label_column: str, path_to_output: str) -> dict[str, tuple
     for significance_test in significance_tests:
         mnc_object.correct_p_values(
             statistical_test=significance_test,
-            method='by'
+            method='bh'
         )
     end_time_correction = time.time()
 
@@ -137,3 +138,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    sys.exit(0)

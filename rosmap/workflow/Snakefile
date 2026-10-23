@@ -1,30 +1,52 @@
 container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.9.5.dev0"
 
-statistical_tests = ["KS"]
+statistical_tests = ["KS", "CVM"]
+
+# BH-adjusted p-value threshold per test for the circle plots, independent of the MNC run above
+plot_thresholds = {"KS": 0.1, "CVM": 0.1}
+
+# Both annotations come out of the same MNC run (run_rosmap_coarse); coarse = grouping.by, fine = cell.type
+resolutions = ["coarse"]
+mnc_object_per_resolution = {
+    "coarse": "results/coarse/mnc_grouping_by.pkl",
+    "fine": "results/coarse/mnc_cell_type.pkl",
+}
+cell_type_label_column_per_resolution = {"coarse": "grouping.by", "fine": "cell.type"}
+
+# Figure sizes (cm) that differ between the 7 coarse and ~23 fine cell types
+circle_plot_size_per_resolution = {"coarse": 7, "fine": 12}
+circle_plot_legend_height_per_resolution = {"coarse": 3, "fine": 8}
+heatmap_size_per_resolution = {"coarse": (8, 7), "fine": (18, 16)}
+
+# Tetrad selections for the donor x tetrad communication-score clustermaps
+clustermap_selections = ["significant", "top_10", "top_20"]
 
 rule run_all:
     input:
-        # Generate MNC results for the coarse annotation
+        # Generate MNC results for the coarse and fine annotation
         "results/coarse/mnc_cell_type.pkl",
+        "results/coarse/mnc_grouping_by.pkl",
 
-        # Add final plots for the coarse analysis
-        expand("results/figs/coarse/{test}/png/p_value_circle_plot.png",test=statistical_tests),
-        expand("results/figs/coarse/{test}/png/p_value_legend.png",test=statistical_tests),
-        expand("results/figs/coarse/{test}/png/p_value_arrow_legend.png",test=statistical_tests),
-        expand("results/figs/coarse/{test}/pdf/p_value_circle_plot.pdf",test=statistical_tests),
-        expand("results/figs/coarse/{test}/pdf/p_value_legend.pdf",test=statistical_tests),
-        expand("results/figs/coarse/{test}/pdf/p_value_arrow_legend.pdf",test=statistical_tests),
+        # Add final plots for the coarse and fine analysis
+        expand("results/figs/{resolution}/{test}/{ext}/p_value_circle_plot.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/p_value_legend.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/p_value_arrow_legend.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
 
 rule plot_all:
     input:
         "results/figs/clinical_data_plot.pdf",
 
-        expand("results/figs/coarse/{test}/png/p_value_circle_plot.png",test=statistical_tests),
-        expand("results/figs/coarse/{test}/png/p_value_legend.png",test=statistical_tests),
-        expand("results/figs/coarse/{test}/png/p_value_arrow_legend.png",test=statistical_tests),
-        expand("results/figs/coarse/{test}/pdf/p_value_circle_plot.pdf",test=statistical_tests),
-        expand("results/figs/coarse/{test}/pdf/p_value_legend.pdf",test=statistical_tests),
-        expand("results/figs/coarse/{test}/pdf/p_value_arrow_legend.pdf",test=statistical_tests),
+        expand("results/figs/{resolution}/{test}/{ext}/p_value_circle_plot.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/p_value_legend.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/p_value_arrow_legend.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+
+        expand("results/figs/{resolution}/{test}/{ext}/significant_boxplots.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/ligand_target_decomposition.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/significant_ecdfs.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/significance_heatmap.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/significant_vs_severity.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/significant_vs_confounders.{ext}",resolution=resolutions,test=plot_thresholds,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test}/{ext}/score_clustermap_{selection}.{ext}",resolution=resolutions,test=plot_thresholds,selection=clustermap_selections,ext=["png", "pdf"]),
 
 
 rule join_rosmap_data:
@@ -171,26 +193,29 @@ rule plot_clinical_data:
             --height_in_cm {params.height_in_cm}
         """
 
-rule plot_p_value_circle_plots_coarse:
+rule plot_p_value_circle_plots:
     input:
         path_to_script="src/b_plot_mnc_coarse_p_value_circle_plot.py",
 
-        path_to_mnc_object="results/coarse/mnc_cell_type.pkl"
+        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution]
     output:
-        path_to_p_value_circle_plot_png="results/figs/coarse/{test}/png/p_value_circle_plot.png",
-        path_to_p_value_legend_png="results/figs/coarse/{test}/png/p_value_legend.png",
-        path_to_p_value_arrow_legend_png="results/figs/coarse/{test}/png/p_value_arrow_legend.png",
-        path_to_p_value_circle_plot_pdf="results/figs/coarse/{test}/pdf/p_value_circle_plot.pdf",
-        path_to_p_value_legend_pdf="results/figs/coarse/{test}/pdf/p_value_legend.pdf",
-        path_to_p_value_arrow_legend_pdf="results/figs/coarse/{test}/pdf/p_value_arrow_legend.pdf",
+        path_to_p_value_circle_plot_png="results/figs/{resolution}/{test}/png/p_value_circle_plot.png",
+        path_to_p_value_legend_png="results/figs/{resolution}/{test}/png/p_value_legend.png",
+        path_to_p_value_arrow_legend_png="results/figs/{resolution}/{test}/png/p_value_arrow_legend.png",
+        path_to_p_value_circle_plot_pdf="results/figs/{resolution}/{test}/pdf/p_value_circle_plot.pdf",
+        path_to_p_value_legend_pdf="results/figs/{resolution}/{test}/pdf/p_value_legend.pdf",
+        path_to_p_value_arrow_legend_pdf="results/figs/{resolution}/{test}/pdf/p_value_arrow_legend.pdf",
+    wildcard_constraints:
+        resolution="|".join(resolutions),
     params:
         statistical_test="{test}",
+        significance_threshold=lambda wildcards: plot_thresholds[wildcards.test],
 
-        width_in_cm_main=7,
-        height_in_cm_main=7,
+        width_in_cm_main=lambda wildcards: circle_plot_size_per_resolution[wildcards.resolution],
+        height_in_cm_main=lambda wildcards: circle_plot_size_per_resolution[wildcards.resolution],
 
         width_in_cm_legend_cell_type=7,
-        height_in_cm_legend_cell_type=3,
+        height_in_cm_legend_cell_type=lambda wildcards: circle_plot_legend_height_per_resolution[wildcards.resolution],
 
         width_in_cm_legend_arrow=3,
         height_in_cm_legend_arrow=1.5,
@@ -209,10 +234,193 @@ rule plot_p_value_circle_plots_coarse:
             --path_to_p_value_legend_pdf {output.path_to_p_value_legend_pdf} \
             --path_to_p_value_arrow_legend_pdf {output.path_to_p_value_arrow_legend_pdf} \
             --statistical_test {params.statistical_test} \
+            --significance_threshold {params.significance_threshold} \
             --width_in_cm_main {params.width_in_cm_main} \
             --height_in_cm_main {params.height_in_cm_main} \
             --width_in_cm_legend_cell_type {params.width_in_cm_legend_cell_type} \
             --height_in_cm_legend_cell_type {params.height_in_cm_legend_cell_type} \
             --width_in_cm_legend_arrow {params.width_in_cm_legend_arrow} \
             --height_in_cm_legend_arrow {params.height_in_cm_legend_arrow}
+        """
+
+rule plot_significant_boxplots:
+    input:
+        path_to_script="src/d_plot_mnc_coarse_significant_boxplots.py",
+
+        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution]
+    output:
+        path_to_boxplots_png="results/figs/{resolution}/{test}/png/significant_boxplots.png",
+        path_to_boxplots_pdf="results/figs/{resolution}/{test}/pdf/significant_boxplots.pdf",
+        path_to_significant_tetrads_csv="results/figs/{resolution}/{test}/significant_tetrads.csv",
+    wildcard_constraints:
+        resolution="|".join(resolutions),
+    params:
+        statistical_test="{test}",
+        significance_threshold=lambda wildcards: plot_thresholds[wildcards.test],
+    resources:
+        slurm_partition="cpu",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_boxplots_png {output.path_to_boxplots_png} \
+            --path_to_boxplots_pdf {output.path_to_boxplots_pdf} \
+            --path_to_significant_tetrads_csv {output.path_to_significant_tetrads_csv} \
+            --statistical_test {params.statistical_test} \
+            --significance_threshold {params.significance_threshold}
+        """
+
+rule plot_ligand_target_decomposition:
+    input:
+        path_to_script="src/e_plot_mnc_coarse_ligand_target_decomposition.py",
+
+        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
+    output:
+        path_to_decomposition_png="results/figs/{resolution}/{test}/png/ligand_target_decomposition.png",
+        path_to_decomposition_pdf="results/figs/{resolution}/{test}/pdf/ligand_target_decomposition.pdf",
+    wildcard_constraints:
+        resolution="|".join(resolutions),
+    params:
+        statistical_test="{test}",
+        significance_threshold=lambda wildcards: plot_thresholds[wildcards.test],
+    resources:
+        slurm_partition="cpu",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_decomposition_png {output.path_to_decomposition_png} \
+            --path_to_decomposition_pdf {output.path_to_decomposition_pdf} \
+            --statistical_test {params.statistical_test} \
+            --significance_threshold {params.significance_threshold}
+        """
+
+rule plot_significant_ecdfs:
+    input:
+        path_to_script="src/f_plot_mnc_coarse_significant_ecdfs.py",
+
+        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
+    output:
+        path_to_ecdfs_png="results/figs/{resolution}/{test}/png/significant_ecdfs.png",
+        path_to_ecdfs_pdf="results/figs/{resolution}/{test}/pdf/significant_ecdfs.pdf",
+    wildcard_constraints:
+        resolution="|".join(resolutions),
+    params:
+        statistical_test="{test}",
+        significance_threshold=lambda wildcards: plot_thresholds[wildcards.test],
+    resources:
+        slurm_partition="cpu",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_ecdfs_png {output.path_to_ecdfs_png} \
+            --path_to_ecdfs_pdf {output.path_to_ecdfs_pdf} \
+            --statistical_test {params.statistical_test} \
+            --significance_threshold {params.significance_threshold}
+        """
+
+rule plot_significance_heatmap:
+    input:
+        path_to_script="src/g_plot_mnc_coarse_significance_heatmap.py",
+
+        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
+    output:
+        path_to_heatmap_png="results/figs/{resolution}/{test}/png/significance_heatmap.png",
+        path_to_heatmap_pdf="results/figs/{resolution}/{test}/pdf/significance_heatmap.pdf",
+    wildcard_constraints:
+        resolution="|".join(resolutions),
+    params:
+        statistical_test="{test}",
+        significance_threshold=lambda wildcards: plot_thresholds[wildcards.test],
+        width_in_cm=lambda wildcards: heatmap_size_per_resolution[wildcards.resolution][0],
+        height_in_cm=lambda wildcards: heatmap_size_per_resolution[wildcards.resolution][1],
+    resources:
+        slurm_partition="cpu",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_heatmap_png {output.path_to_heatmap_png} \
+            --path_to_heatmap_pdf {output.path_to_heatmap_pdf} \
+            --statistical_test {params.statistical_test} \
+            --significance_threshold {params.significance_threshold} \
+            --width_in_cm {params.width_in_cm} \
+            --height_in_cm {params.height_in_cm}
+        """
+
+rule plot_significant_vs_clinical:
+    input:
+        path_to_script="src/h_plot_mnc_coarse_significant_vs_clinical.py",
+
+        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
+        path_to_clinical_data="data/raw/ROSMAP_clinical.csv",
+        path_to_subject_wise_normalized_loom="data/processed/coarse/joined_matrix_subsampled_refined_annotation.subject_wise_normalized.loom",
+    output:
+        path_to_severity_png="results/figs/{resolution}/{test}/png/significant_vs_severity.png",
+        path_to_severity_pdf="results/figs/{resolution}/{test}/pdf/significant_vs_severity.pdf",
+        path_to_confounders_png="results/figs/{resolution}/{test}/png/significant_vs_confounders.png",
+        path_to_confounders_pdf="results/figs/{resolution}/{test}/pdf/significant_vs_confounders.pdf",
+    wildcard_constraints:
+        resolution="|".join(resolutions),
+    params:
+        statistical_test="{test}",
+        significance_threshold=lambda wildcards: plot_thresholds[wildcards.test],
+        cell_type_label_column=lambda wildcards: cell_type_label_column_per_resolution[wildcards.resolution],
+    resources:
+        slurm_partition="cpu",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_clinical_data {input.path_to_clinical_data} \
+            --path_to_subject_wise_normalized_loom {input.path_to_subject_wise_normalized_loom} \
+            --path_to_severity_png {output.path_to_severity_png} \
+            --path_to_severity_pdf {output.path_to_severity_pdf} \
+            --path_to_confounders_png {output.path_to_confounders_png} \
+            --path_to_confounders_pdf {output.path_to_confounders_pdf} \
+            --statistical_test {params.statistical_test} \
+            --significance_threshold {params.significance_threshold} \
+            --cell_type_label_column {params.cell_type_label_column}
+        """
+
+rule plot_score_clustermap:
+    input:
+        path_to_script="src/i_plot_mnc_coarse_score_clustermap.py",
+
+        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
+    output:
+        path_to_clustermap_png="results/figs/{resolution}/{test}/png/score_clustermap_{selection}.png",
+        path_to_clustermap_pdf="results/figs/{resolution}/{test}/pdf/score_clustermap_{selection}.pdf",
+        path_to_donor_clusters_csv="results/figs/{resolution}/{test}/score_clustermap_donor_clusters_{selection}.csv",
+    wildcard_constraints:
+        resolution="|".join(resolutions),
+        selection="|".join(clustermap_selections),
+    params:
+        statistical_test="{test}",
+        significance_threshold=lambda wildcards: plot_thresholds[wildcards.test],
+    resources:
+        slurm_partition="cpu",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_clustermap_png {output.path_to_clustermap_png} \
+            --path_to_clustermap_pdf {output.path_to_clustermap_pdf} \
+            --path_to_donor_clusters_csv {output.path_to_donor_clusters_csv} \
+            --statistical_test {params.statistical_test} \
+            --selection {wildcards.selection} \
+            --significance_threshold {params.significance_threshold}
         """

@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 
 import argparse
 
+from plotting.utils import cell_type_to_short
+
 parser = argparse.ArgumentParser(description='Plot p-value circle plot for MNC object.')
 
 parser.add_argument(
@@ -50,6 +52,11 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
+    '--significance_threshold',
+    type=float,
+    default=0.05,
+)
+parser.add_argument(
     '--width_in_cm_main',
     type=float,
     default=10.0,
@@ -91,6 +98,7 @@ path_to_p_value_legend_pdf: str = args.path_to_p_value_legend_pdf
 path_to_p_value_arrow_legend_pdf: str = args.path_to_p_value_arrow_legend_pdf
 
 statistical_test: str = args.statistical_test
+significance_threshold: float = args.significance_threshold
 
 width_in_cm_main: float = args.width_in_cm_main
 height_in_cm_main: float = args.height_in_cm_main
@@ -102,13 +110,10 @@ height_in_cm_legend_arrow: float = args.height_in_cm_legend_arrow
 cm: float = 1/2.54  # cm to inches conversion factor
 
 def main():
+    # Shared labels cover both annotations; keep the abbreviations used in the coarse figure
     cell_type_label_short: dict[str, str] = {
-        'Astrocyte': 'Astro',
-        'Excitatory Neurons': 'Exc',
-        'Inhibitory Neurons': 'Inh',
+        **cell_type_to_short,
         'Microglia': 'Micro',
-        'OPCs': 'OPCs',
-        'Oligodendrocytes': 'Oligo',
         'Vascular Niche': 'Vasc',
     }
 
@@ -136,7 +141,7 @@ def main():
         axs=axs,
         mnc_object=mnc_object,
         significance_test_to_use=statistical_test,
-        significance_threshold=0.05,
+        significance_threshold=significance_threshold,
         use_adj_p_values=True,
         cell_type_labels_short=cell_type_label_short,
         radius_of_nodes=0.05,
