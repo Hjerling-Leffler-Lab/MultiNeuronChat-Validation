@@ -9,7 +9,7 @@ from multineuronchat.masks import compute_variance_mask, compute_abundance_mask
 from multineuronchat.power import minimum_detectable_p
 
 from utils import get_expected_perturbations_array, make_test_label
-from plot_precision_recall_a import top_percentile_mask, by_correct, precision_recall_from_p_values_adj
+from plot_precision_recall_a import top_percentile_mask, fdr_correct, precision_recall_from_p_values_adj
 
 import argparse
 
@@ -29,10 +29,10 @@ statistical_tests: list[str] = ['KS', 'CVM', 'MannWhitneyU']
 
 def triples_needed_at_floor(p_min: float, n_hypotheses: int, alpha: float = 0.05) -> int:
     """
-    Smallest number of discoveries the Benjamini-Yekutieli procedure can make in a given design.
+    Smallest number of discoveries the Benjamini-Hochberg procedure can make in a given design.
 
-    The k-th smallest p-value is significant only if p_(k) <= k * alpha / (m * c(m)). Since no p-value can fall below
-    the permutation floor p_min, a significance call needs k >= p_min * m * c(m) / alpha: below this many triples at
+    The k-th smallest p-value is significant only if p_(k) <= k * alpha / m. Since no p-value can fall below the
+    permutation floor p_min, a significance call needs k >= p_min * m / alpha: below this many triples at
     (or near) the floor, nothing can be called, whatever the effect size.
 
     :param p_min: uncorrected minimal attainable p-value of the design (minimum_detectable_p)
@@ -40,9 +40,7 @@ def triples_needed_at_floor(p_min: float, n_hypotheses: int, alpha: float = 0.05
     :param alpha: significance level of the corrected p-values
     :return: the minimal number of triples that must reach the floor together (at least 1)
     """
-    # Harmonic factor of the BY correction, as in multineuronchat.power.minimum_detectable_p.
-    correction_factor: float = float(np.sum(1 / np.arange(1, n_hypotheses + 1)))
-    return max(1, int(math.ceil(p_min * n_hypotheses * correction_factor / alpha)))
+    return max(1, int(math.ceil(p_min * n_hypotheses / alpha)))
 
 
 def main():
@@ -82,7 +80,7 @@ def main():
 
         # The label-blind prefilter statistics are recomputed from the saved object (step 7 computes them from the
         # same communication and abundance scores). They are independent of the condition labels, so recomputing
-        # them does not change the p-values; only the set of hypotheses entering the BY correction.
+        # them does not change the p-values; only the set of hypotheses entering the BH correction.
         _, variances = compute_variance_mask(mnc_object, min_value=0.0, statistic='cv2', return_variances=True)
         _, abundances = compute_abundance_mask(mnc_object, min_value=0.0, return_abundances=True)
 
@@ -100,7 +98,7 @@ def main():
             for filter_key in n_sweep_filter_keys:
                 mask: xr.DataArray | None = masks[filter_key]
                 selected: xr.DataArray = raw_p_values if mask is None else raw_p_values.where(mask)
-                p_values_adj: xr.DataArray = by_correct(raw_p_values, mask=mask)
+                p_values_adj: xr.DataArray = fdr_correct(raw_p_values, mask=mask)
 
                 precision, recall = precision_recall_from_p_values_adj(
                     reference_matrix=reference_matrix,

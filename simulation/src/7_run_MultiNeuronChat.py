@@ -193,7 +193,7 @@ def main():
     for statistical_test in ['KS', 'CVM', 'MannWhitneyU']:
         print(f'Significance Test: {statistical_test}', flush=True)
         start_time_correction = time.time()
-        mnc_object.correct_p_values(statistical_test=statistical_test)
+        mnc_object.correct_p_values(statistical_test=statistical_test, method='bh')
         end_time_correction = time.time()
 
         timings[f'correction_{statistical_test}'] = (

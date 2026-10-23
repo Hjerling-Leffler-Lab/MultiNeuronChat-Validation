@@ -110,7 +110,7 @@ def plot_filters_vs_n(
         show_points: bool = False,
 ) -> None:
     """
-    A3: precision (left) and recall (right) at BY-adjusted p < 0.05 against the cohort size, one line per prefilter.
+    A3: precision (left) and recall (right) at BH-adjusted p < 0.05 against the cohort size, one line per prefilter.
     With show_points, the value of every dataset is overlaid as a beeswarm and the lines are dodged further apart.
     """
     x_positions: np.ndarray = np.arange(len(n_per_group))
@@ -161,7 +161,7 @@ def plot_filters_vs_n(
 
     for metric, ax in (('Precision', precision_ax), ('Recall', recall_ax)):
         style_axis(ax, x_positions, n_per_group, font_size)
-        ax.set_title(f'{metric} ({statistical_test_short[statistical_test]}, BY 5%)', fontsize=font_size)
+        ax.set_title(f'{metric} ({statistical_test_short[statistical_test]}, BH 5%)', fontsize=font_size)
         ax.set_yticks(np.arange(0, 1.1, 0.2))
         ax.set_ylim(0, 1.05)
         ax.set_xlabel('Donors per group', fontsize=font_size)
@@ -202,9 +202,9 @@ def plot_tests_vs_n(
     """
     B1: without prefiltering, per test against the cohort size:
     (a) PR AUC (a ranking metric, no significance threshold),
-    (b) recall and (c) precision of the calls at BY-adjusted p < alpha,
+    (b) recall and (c) precision of the calls at BH-adjusted p < alpha,
     (d) the detectability floor: the smallest number of triples that must reach the minimal attainable p-value
-        together before BY can call anything (line), against the number of triples that actually reach it (markers).
+        together before BH can call anything (line), against the number of triples that actually reach it (markers).
     With show_points, the value of every dataset is overlaid as a beeswarm in (a)-(d) and the tests are dodged
     further apart.
     """
@@ -278,8 +278,8 @@ def plot_tests_vs_n(
     floor_ax.set_title('Triples at the p-value floor', fontsize=font_size)
 
     auc_ax.set_title('PR AUC', fontsize=font_size)
-    recall_ax.set_title(f'Recall (BY {alpha:.0%})', fontsize=font_size)
-    precision_ax.set_title(f'Precision (BY {alpha:.0%})', fontsize=font_size)
+    recall_ax.set_title(f'Recall (BH {alpha:.0%})', fontsize=font_size)
+    precision_ax.set_title(f'Precision (BH {alpha:.0%})', fontsize=font_size)
     for ax in (auc_ax, recall_ax, precision_ax):
         ax.set_ylim(0, 1.05)
         ax.set_yticks(np.arange(0, 1.1, 0.2))

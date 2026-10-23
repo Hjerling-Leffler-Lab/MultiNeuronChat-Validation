@@ -63,7 +63,7 @@ def precision_recall_from_p_values_adj(
     Compute precision and recall of the significant triples (adjusted p < 0.05) against the ground truth.
 
     :param reference_matrix: the ground-truth perturbation matrix (1 for perturbed triples)
-    :param p_values_adj: BY-corrected p-values for one statistical test
+    :param p_values_adj: BH-corrected p-values for one statistical test
     :return: (precision, recall)
     """
     confusion_matrix: xr.DataArray = compute_confusion_matrix(
@@ -79,9 +79,9 @@ def precision_recall_from_p_values_adj(
     return float(precision.values), float(recall.values)
 
 
-def by_correct(raw_p_values: xr.DataArray, mask: xr.DataArray | None = None) -> xr.DataArray:
+def fdr_correct(raw_p_values: xr.DataArray, mask: xr.DataArray | None = None) -> xr.DataArray:
     """
-    Benjamini-Yekutieli correction of a p-value cube, optionally restricted to a prefilter mask.
+    Benjamini-Hochberg correction of a p-value cube, optionally restricted to a prefilter mask.
 
     The prefilter only affects which triples enter the correction: applying it sets the non-selected
     triples to NaN, so the correction runs over fewer hypotheses (a smaller denominator, hence more
@@ -91,7 +91,7 @@ def by_correct(raw_p_values: xr.DataArray, mask: xr.DataArray | None = None) -> 
 
     :param raw_p_values: uncorrected per-triple p-values (NaN where untestable), dims (source, receiver, interaction)
     :param mask: boolean DataArray selecting the triples to keep; None keeps every testable triple
-    :return: BY-corrected p-values, NaN outside the retained/testable set
+    :return: BH-corrected p-values, NaN outside the retained/testable set
     """
     selected: xr.DataArray = raw_p_values if mask is None else raw_p_values.where(mask)
 
@@ -100,7 +100,7 @@ def by_correct(raw_p_values: xr.DataArray, mask: xr.DataArray | None = None) -> 
 
     finite: np.ndarray = ~np.isnan(values)
     if np.any(finite):
-        corrected[finite] = stats.false_discovery_control(values[finite], method='by')
+        corrected[finite] = stats.false_discovery_control(values[finite], method='bh')
 
     return xr.DataArray(corrected, dims=selected.dims, coords=selected.coords)
 
@@ -193,7 +193,7 @@ def main():
             )
         )
 
-        # Build one BY-corrected p-value cube per prefilter. 'None' is the unfiltered baseline, which was
+        # Build one BH-corrected p-value cube per prefilter. 'None' is the unfiltered baseline, which was
         # already computed and corrected in step 7, so it is reused directly. The legacy Wasserstein filter
         # and the label-blind Variance/Abundance filters are each applied at two retentions: 'top10' keeps
         # the top 10% of triples by the statistic, 'min0' keeps every triple whose statistic is strictly
@@ -203,7 +203,7 @@ def main():
         abundances: xr.DataArray = wasserstein_object['abundances']
 
         # 'None' keeps every testable triple; the other filters restrict the correction to a subset.
-        # The raw p-values are the same for every filter (reused from step 7); only the BY-correction
+        # The raw p-values are the same for every filter (reused from step 7); only the BH-correction
         # denominator differs.
         masks: dict[str, xr.DataArray | None] = {
             'None': None,
@@ -217,7 +217,7 @@ def main():
         raw_p_values: xr.DataArray = mnc_object.p_values[statistical_test]
 
         p_values_adj_per_filter: dict[str, xr.DataArray] = {
-            filter_key: by_correct(raw_p_values, mask=mask)
+            filter_key: fdr_correct(raw_p_values, mask=mask)
             for filter_key, mask in masks.items()
         }
 
