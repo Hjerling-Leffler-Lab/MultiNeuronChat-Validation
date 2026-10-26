@@ -44,6 +44,7 @@ rule plot_all:
 
         expand("results/figs/{resolution}/{test_dir}/{ext}/significant_boxplots.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
         expand("results/figs/{resolution}/{test_dir}/{ext}/ligand_target_decomposition.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test_dir}/{ext}/single_panels/ligand_target_decomposition",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
         expand("results/figs/{resolution}/{test_dir}/{ext}/significant_ecdfs.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
         expand("results/figs/{resolution}/{test_dir}/{ext}/significance_heatmap.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
         expand("results/figs/{resolution}/{test_dir}/{ext}/significant_vs_severity.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
@@ -284,6 +285,8 @@ rule plot_ligand_target_decomposition:
     output:
         path_to_decomposition_png="results/figs/{resolution}/{test}/padj_{threshold}/png/ligand_target_decomposition.png",
         path_to_decomposition_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/ligand_target_decomposition.pdf",
+        path_to_single_panel_dir_png=directory("results/figs/{resolution}/{test}/padj_{threshold}/png/single_panels/ligand_target_decomposition"),
+        path_to_single_panel_dir_pdf=directory("results/figs/{resolution}/{test}/padj_{threshold}/pdf/single_panels/ligand_target_decomposition"),
     wildcard_constraints:
         resolution="|".join(resolutions),
         threshold=r"[0-9.]+",
@@ -300,6 +303,8 @@ rule plot_ligand_target_decomposition:
             --path_to_mnc_object {input.path_to_mnc_object} \
             --path_to_decomposition_png {output.path_to_decomposition_png} \
             --path_to_decomposition_pdf {output.path_to_decomposition_pdf} \
+            --path_to_single_panel_dir_png {output.path_to_single_panel_dir_png} \
+            --path_to_single_panel_dir_pdf {output.path_to_single_panel_dir_pdf} \
             --statistical_test {params.statistical_test} \
             --significance_threshold {params.significance_threshold}
         """

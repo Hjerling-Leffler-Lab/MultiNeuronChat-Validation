@@ -1,3 +1,6 @@
+import os
+import re
+
 cm: float = 1/2.54
 
 statistical_test_short: dict[str, str] = {
@@ -70,3 +73,18 @@ def format_p_value(p: float, prefix: str | None = 'adj. p') -> str:
     if prefix is None:
         return value
     return f'{prefix} = {value}'
+
+
+def tetrad_file_stem(source: str, receiver: str, interaction: str) -> str:
+    """File-name-safe identifier of a tetrad, used to name its single-panel figures."""
+    return '__'.join(re.sub(r'[^A-Za-z0-9.-]+', '_', name).strip('_') for name in [source, receiver, interaction])
+
+
+def save_single_panel(fig, single_panel_dir_png: str, single_panel_dir_pdf: str, file_stem: str):
+    """Save a one-panel figure as png and pdf, so main and supplementary figures can be assembled panel by panel."""
+    import matplotlib.pyplot as plt
+
+    fig.tight_layout()
+    fig.savefig(os.path.join(single_panel_dir_png, f'{file_stem}.png'), dpi=300)
+    fig.savefig(os.path.join(single_panel_dir_pdf, f'{file_stem}.pdf'), dpi=300)
+    plt.close(fig)
