@@ -65,7 +65,8 @@ def save_no_significant_tetrads_figure(output_paths: list[str], statistical_test
     plt.close(fig)
 
 
-def format_p_value(p: float, prefix: str = 'adj. p') -> str:
-    if p < 0.001:
-        return f'{prefix} = {p:.1e}'
-    return f'{prefix} = {p:.3f}'
+def format_p_value(p: float, prefix: str | None = 'adj. p') -> str:
+    value = f'{p:.1e}' if p < 0.001 else f'{p:.3f}'
+    if prefix is None:
+        return value
+    return f'{prefix} = {value}'
