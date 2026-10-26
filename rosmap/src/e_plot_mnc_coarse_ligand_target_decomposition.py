@@ -13,7 +13,7 @@ plt.rcParams['pdf.fonttype'] = 42
 
 import argparse
 
-from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, format_p_value, statistical_test_short, tetrad_file_stem, save_single_panel
+from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, tetrad_file_stem, save_single_panel
 
 parser = argparse.ArgumentParser(description='Decompose the communication score of every significant tetrad into ligand and target abundance.')
 
@@ -44,6 +44,12 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
+    '--path_to_ligand_target_tests_csv',
+    type=str,
+    required=True,
+    help='Raw and BH-adjusted p-values behind the significance stars of the ligand and target panels.'
+)
+parser.add_argument(
     '--statistical_test',
     type=str,
     required=True,
@@ -70,6 +76,7 @@ path_to_decomposition_png: str = args.path_to_decomposition_png
 path_to_decomposition_pdf: str = args.path_to_decomposition_pdf
 path_to_single_panel_dir_png: str = args.path_to_single_panel_dir_png
 path_to_single_panel_dir_pdf: str = args.path_to_single_panel_dir_pdf
+path_to_ligand_target_tests_csv: str = args.path_to_ligand_target_tests_csv
 
 statistical_test: str = args.statistical_test
 significance_threshold: float = args.significance_threshold
@@ -80,7 +87,17 @@ height_in_cm_per_panel: float = args.height_in_cm_per_panel
 cm: float = 1/2.54  # cm to inches conversion factor
 
 
-def plot_condition_boxes(ax, values_per_condition: list[np.ndarray], condition_names: tuple[str, str], title: str):
+def p_value_to_stars(p: float) -> str:
+    if p < 0.001:
+        return '***'
+    if p < 0.01:
+        return '**'
+    if p < 0.05:
+        return '*'
+    return 'ns'
+
+
+def plot_condition_boxes(ax, values_per_condition: list[np.ndarray], condition_names: tuple[str, str], title: str, p_adj: float):
     rng = np.random.default_rng(0)
     positions = np.arange(len(values_per_condition))
 
@@ -102,6 +119,25 @@ def plot_condition_boxes(ax, values_per_condition: list[np.ndarray], condition_n
     for position, values in zip(positions, values_per_condition):
         jitter = rng.uniform(-0.18, 0.18, size=values.shape[0])
         ax.scatter(position + jitter, values, s=1.5, color='black', alpha=0.5, linewidths=0, zorder=3)
+
+    # Significance bracket above both boxes; the stars encode the BH-adjusted p-value (stated in the caption)
+    if not np.isnan(p_adj):
+        y_max = max(values.max() for values in values_per_condition)
+        y_min = min(values.min() for values in values_per_condition)
+        y_range = y_max - y_min if y_max > y_min else 1.0
+        bracket_y = y_max + 0.05 * y_range
+        bracket_height = 0.025 * y_range
+        ax.plot(
+            [positions[0], positions[0], positions[1], positions[1]],
+            [bracket_y, bracket_y + bracket_height, bracket_y + bracket_height, bracket_y],
+            color='black', linewidth=0.5,
+        )
+        stars = p_value_to_stars(p_adj)
+        ax.text(
+            positions.mean(), bracket_y + 1.4 * bracket_height, stars,
+            ha='center', va='bottom', fontsize=6 if stars == 'ns' else 7,
+        )
+        ax.set_ylim(y_min - 0.04 * y_range, y_max + 0.22 * y_range)
 
     # The fraction of donors at exactly zero is what separates the conditions for zero-inflated tetrads
     ax.set_xticks(positions)
@@ -133,29 +169,56 @@ def compare_conditions(values_per_condition: list[np.ndarray]) -> float:
     raise ValueError(f'Unknown statistical test: {statistical_test}')
 
 
-def format_test_p_value(values_per_condition: list[np.ndarray]) -> str:
-    p = compare_conditions(values_per_condition)
-    test_short = statistical_test_short.get(statistical_test, statistical_test)
-    return f'{test_short} p = n.a.' if np.isnan(p) else format_p_value(p, prefix=f'{test_short} p')
+def get_abundance_values(mnc_object: MultiNeuronChatObject, side: str, cell_type: str, interaction: str) -> list[np.ndarray]:
+    """Per-condition ligand abundance of a source, or target abundance of a receiver, for one interaction."""
+    abundance_dict = mnc_object.ligand_abundance_dict if side == 'ligand' else mnc_object.target_abundance_dict
+    return [drop_nan(abundance_dict[c].loc[:, cell_type, interaction].to_numpy()) for c in mnc_object.condition_names]
 
 
-def get_decomposition_panels(mnc_object: MultiNeuronChatObject, row) -> list[tuple[str, list[np.ndarray], str, str]]:
-    """(name, values per condition, title, y label) of the ligand, target and score panel of one tetrad."""
+def test_ligands_and_targets(mnc_object: MultiNeuronChatObject, significant: pd.DataFrame) -> pd.DataFrame:
+    """Test every distinct ligand and target abundance shown in the figure and BH-adjust across them.
+
+    Tetrads sharing a source and interaction share their ligand test (likewise for receiver and target), so each test
+    enters the correction once rather than once per tetrad.
+    """
+    tests = pd.concat([
+        significant[['source', 'interaction']].rename(columns={'source': 'cell_type'}).assign(side='ligand'),
+        significant[['receiver', 'interaction']].rename(columns={'receiver': 'cell_type'}).assign(side='target'),
+    ]).drop_duplicates()[['side', 'cell_type', 'interaction']].reset_index(drop=True)
+    tests['p'] = [
+        compare_conditions(get_abundance_values(mnc_object, test.side, test.cell_type, test.interaction))
+        for test in tests.itertuples()
+    ]
+    tests['p_adj'] = np.nan
+    tested = tests['p'].notna()
+    tests.loc[tested, 'p_adj'] = stats.false_discovery_control(tests.loc[tested, 'p'], method='bh')
+    tests['stars'] = [p_value_to_stars(p) if not np.isnan(p) else '' for p in tests['p_adj']]
+    tests.insert(3, 'statistical_test', statistical_test)
+    return tests
+
+
+def get_decomposition_panels(mnc_object: MultiNeuronChatObject, row, tests: pd.DataFrame) -> list[tuple[str, list[np.ndarray], str, str, float]]:
+    """(name, values per condition, title, y label, adjusted p-value) of the ligand, target and score panel of one tetrad."""
     condition_names = mnc_object.condition_names
     source_short = cell_type_to_short.get(row.source, row.source)
     receiver_short = cell_type_to_short.get(row.receiver, row.receiver)
-    ligand_values = [drop_nan(mnc_object.ligand_abundance_dict[c].loc[:, row.source, row.interaction].to_numpy()) for c in condition_names]
-    target_values = [drop_nan(mnc_object.target_abundance_dict[c].loc[:, row.receiver, row.interaction].to_numpy()) for c in condition_names]
+    p_adj_per_test = tests.set_index(['side', 'cell_type', 'interaction'])['p_adj']
     score_values = [drop_nan(mnc_object.communication_score_dict[c].loc[:, row.source, row.receiver, row.interaction].to_numpy()) for c in condition_names]
     return [
-        ('ligand', ligand_values, f'{row.interaction}\nLigand in {source_short}\n{format_test_p_value(ligand_values)}', 'Abundance'),
-        ('target', target_values, f'{row.interaction}\nTarget in {receiver_short}\n{format_test_p_value(target_values)}', 'Abundance'),
-        ('score', score_values, f'Score {source_short} → {receiver_short}\n{format_p_value(row.p_adj)}', 'Communication score'),
+        (
+            'ligand', get_abundance_values(mnc_object, 'ligand', row.source, row.interaction),
+            f'{row.interaction}\nLigand in {source_short}', 'Abundance', p_adj_per_test['ligand', row.source, row.interaction],
+        ),
+        (
+            'target', get_abundance_values(mnc_object, 'target', row.receiver, row.interaction),
+            f'{row.interaction}\nTarget in {receiver_short}', 'Abundance', p_adj_per_test['target', row.receiver, row.interaction],
+        ),
+        ('score', score_values, f'{row.interaction}\nScore {source_short} → {receiver_short}', 'Communication score', row.p_adj),
     ]
 
 
 def main():
-    for output_path in [path_to_decomposition_png, path_to_decomposition_pdf]:
+    for output_path in [path_to_decomposition_png, path_to_decomposition_pdf, path_to_ligand_target_tests_csv]:
         output_dir = os.path.dirname(output_path)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -166,8 +229,12 @@ def main():
     significant: pd.DataFrame = get_significant_tetrads(mnc_object, statistical_test, significance_threshold)
     if significant.empty:
         save_no_significant_tetrads_figure([path_to_decomposition_png, path_to_decomposition_pdf], statistical_test, significance_threshold)
+        pd.DataFrame(columns=['side', 'cell_type', 'interaction', 'statistical_test', 'p', 'p_adj', 'stars']).to_csv(path_to_ligand_target_tests_csv, index=False)
         return
     condition_names = mnc_object.condition_names
+
+    tests: pd.DataFrame = test_ligands_and_targets(mnc_object, significant)
+    tests.to_csv(path_to_ligand_target_tests_csv, index=False)
 
     n_rows = len(significant)
     fig, axs = plt.subplots(
@@ -177,8 +244,8 @@ def main():
     )
 
     for row_axs, row in zip(axs, significant.itertuples()):
-        for ax, (_, values, title, _) in zip(row_axs, get_decomposition_panels(mnc_object, row)):
-            plot_condition_boxes(ax, values, condition_names, title)
+        for ax, (_, values, title, _, p_adj) in zip(row_axs, get_decomposition_panels(mnc_object, row, tests)):
+            plot_condition_boxes(ax, values, condition_names, title, p_adj)
 
         row_axs[0].set_ylabel('Abundance', fontsize=7)
         row_axs[2].set_ylabel('Communication score', fontsize=7)
@@ -191,9 +258,9 @@ def main():
     # Every panel again as its own figure, named <source>__<receiver>__<interaction>__<ligand|target|score>
     for row in significant.itertuples():
         file_stem = tetrad_file_stem(row.source, row.receiver, row.interaction)
-        for name, values, title, y_label in get_decomposition_panels(mnc_object, row):
+        for name, values, title, y_label, p_adj in get_decomposition_panels(mnc_object, row, tests):
             fig, ax = plt.subplots(1, 1, figsize=(width_in_cm_per_panel * cm, height_in_cm_per_panel * cm))
-            plot_condition_boxes(ax, values, condition_names, title)
+            plot_condition_boxes(ax, values, condition_names, title, p_adj)
             ax.set_ylabel(y_label, fontsize=7)
             save_single_panel(fig, path_to_single_panel_dir_png, path_to_single_panel_dir_pdf, f'{file_stem}__{name}')
 

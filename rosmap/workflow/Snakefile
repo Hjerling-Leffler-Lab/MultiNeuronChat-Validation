@@ -287,6 +287,7 @@ rule plot_ligand_target_decomposition:
         path_to_decomposition_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/ligand_target_decomposition.pdf",
         path_to_single_panel_dir_png=directory("results/figs/{resolution}/{test}/padj_{threshold}/png/single_panels/ligand_target_decomposition"),
         path_to_single_panel_dir_pdf=directory("results/figs/{resolution}/{test}/padj_{threshold}/pdf/single_panels/ligand_target_decomposition"),
+        path_to_ligand_target_tests_csv="results/figs/{resolution}/{test}/padj_{threshold}/ligand_target_tests.csv",
     wildcard_constraints:
         resolution="|".join(resolutions),
         threshold=r"[0-9.]+",
@@ -305,6 +306,7 @@ rule plot_ligand_target_decomposition:
             --path_to_decomposition_pdf {output.path_to_decomposition_pdf} \
             --path_to_single_panel_dir_png {output.path_to_single_panel_dir_png} \
             --path_to_single_panel_dir_pdf {output.path_to_single_panel_dir_pdf} \
+            --path_to_ligand_target_tests_csv {output.path_to_ligand_target_tests_csv} \
             --statistical_test {params.statistical_test} \
             --significance_threshold {params.significance_threshold}
         """
