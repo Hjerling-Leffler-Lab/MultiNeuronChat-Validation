@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from multineuronchat import MultiNeuronChatObject
 
@@ -12,7 +13,7 @@ plt.rcParams['pdf.fonttype'] = 42
 
 import argparse
 
-from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, format_p_value, tetrad_file_stem, save_single_panel
+from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, format_p_value, statistical_test_short, tetrad_file_stem, save_single_panel
 
 parser = argparse.ArgumentParser(description='Decompose the communication score of every significant tetrad into ligand and target abundance.')
 
@@ -117,6 +118,27 @@ def drop_nan(values: np.ndarray) -> np.ndarray:
     return values[~np.isnan(values)]
 
 
+def compare_conditions(values_per_condition: list[np.ndarray]) -> float:
+    """Nominal p-value of the MNC run's test between the two conditions, applied to ligand or target abundance as MNC applies it to the score."""
+    condition_a_values, condition_b_values = values_per_condition
+    # Like MNC, skip the test if a condition has fewer than two donors or all values are identical
+    if len(condition_a_values) < 2 or len(condition_b_values) < 2 or np.unique(np.hstack(values_per_condition)).shape[0] == 1:
+        return np.nan
+    if statistical_test == 'KS':
+        return stats.ks_2samp(condition_a_values, condition_b_values).pvalue
+    if statistical_test == 'CVM':
+        return stats.cramervonmises_2samp(condition_a_values, condition_b_values, method='auto').pvalue
+    if statistical_test == 'MannWhitneyU':
+        return stats.mannwhitneyu(condition_a_values, condition_b_values, alternative='two-sided').pvalue
+    raise ValueError(f'Unknown statistical test: {statistical_test}')
+
+
+def format_test_p_value(values_per_condition: list[np.ndarray]) -> str:
+    p = compare_conditions(values_per_condition)
+    test_short = statistical_test_short.get(statistical_test, statistical_test)
+    return f'{test_short} p = n.a.' if np.isnan(p) else format_p_value(p, prefix=f'{test_short} p')
+
+
 def get_decomposition_panels(mnc_object: MultiNeuronChatObject, row) -> list[tuple[str, list[np.ndarray], str, str]]:
     """(name, values per condition, title, y label) of the ligand, target and score panel of one tetrad."""
     condition_names = mnc_object.condition_names
@@ -126,8 +148,8 @@ def get_decomposition_panels(mnc_object: MultiNeuronChatObject, row) -> list[tup
     target_values = [drop_nan(mnc_object.target_abundance_dict[c].loc[:, row.receiver, row.interaction].to_numpy()) for c in condition_names]
     score_values = [drop_nan(mnc_object.communication_score_dict[c].loc[:, row.source, row.receiver, row.interaction].to_numpy()) for c in condition_names]
     return [
-        ('ligand', ligand_values, f'{row.interaction}\nLigand in {source_short}', 'Abundance'),
-        ('target', target_values, f'{row.interaction}\nTarget in {receiver_short}', 'Abundance'),
+        ('ligand', ligand_values, f'{row.interaction}\nLigand in {source_short}\n{format_test_p_value(ligand_values)}', 'Abundance'),
+        ('target', target_values, f'{row.interaction}\nTarget in {receiver_short}\n{format_test_p_value(target_values)}', 'Abundance'),
         ('score', score_values, f'Score {source_short} → {receiver_short}\n{format_p_value(row.p_adj)}', 'Communication score'),
     ]
 
