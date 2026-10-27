@@ -244,6 +244,32 @@ def convert_p_value_string_to_stars(p_value: float) -> str:
     else:
         return 'n.s.'
 
+def median_and_iqr_errors(values_per_x: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Median and interquartile range of the values at each x position, in the form plt.errorbar expects.
+
+    Precision, recall and PR AUC are bounded by [0, 1] and often skewed towards a bound, so mean +- std can reach
+    outside the valid range; the quartiles are actual quantiles of the data and always stay inside it.
+
+    :param values_per_x: the finite values at each x position; an empty array gives NaN
+    :return: medians, and a (2, n) array of the distances from the median down to Q1 and up to Q3 (yerr)
+    """
+    medians: list[float] = []
+    lower_errors: list[float] = []
+    upper_errors: list[float] = []
+    for values in values_per_x:
+        if len(values) == 0:
+            medians.append(np.nan)
+            lower_errors.append(np.nan)
+            upper_errors.append(np.nan)
+            continue
+        q1, median, q3 = np.percentile(values, [25, 50, 75])
+        medians.append(float(median))
+        lower_errors.append(float(median - q1))
+        upper_errors.append(float(q3 - median))
+    return np.array(medians), np.array([lower_errors, upper_errors])
+
+
 def with_points_path(path: str) -> str:
     """
     Path of the variant of a figure that overlays the individual data points, next to the original figure.

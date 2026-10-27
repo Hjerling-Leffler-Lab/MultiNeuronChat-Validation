@@ -14,6 +14,7 @@ from utils import (
     filter_hollow_markers,
     make_test_label,
     draw_beeswarm,
+    median_and_iqr_errors,
     with_points_path,
 )
 
@@ -68,6 +69,7 @@ def plot_filters(
     in the same panel. Lines are dodged horizontally, so that filters with identical results (e.g. the '> 0'
     filters and the unfiltered baseline) stay visible. With show_points, the value of every dataset is overlaid as
     a beeswarm and the lines are dodged further apart to make room for the swarms.
+    Markers show the median over datasets, bars the interquartile range.
 
     :param precision_recall_df: joined summary dataframes of plot_precision_recall_a.py
     :param filter_keys: keys of filter_display_names to draw, in drawing order
@@ -90,13 +92,8 @@ def plot_filters(
         sharey=True,
     )
 
-    def mean_std_per_proportion(label: str, metric: str) -> tuple[list[float], list[float], list[np.ndarray]]:
-        """
-        Mean and std of a metric across datasets for one label, ordered by proportions_to_plot, plus the finite
-        per-dataset values they summarise.
-        """
-        means: list[float] = []
-        stds: list[float] = []
+    def values_per_proportion_for(label: str, metric: str) -> list[np.ndarray]:
+        """The finite per-dataset values of a metric for one label, ordered by proportions_to_plot."""
         values_per_proportion: list[np.ndarray] = []
         for proportion in proportions_to_plot:
             values: list[float] = precision_recall_df[
@@ -105,13 +102,11 @@ def plot_filters(
                 (precision_recall_df['Proportion'] == proportion) &
                 (precision_recall_df['Statistical Test'] == label)
             ][metric].values.tolist()
-            # Precision is NaN for datasets without any significant call; average over the remaining datasets.
+            # Precision is NaN for datasets without any significant call; summarise the remaining datasets only.
             finite_values: np.ndarray = np.asarray(values, dtype=float)
             finite_values = finite_values[np.isfinite(finite_values)]
-            means.append(np.mean(finite_values).item() if len(finite_values) > 0 else np.nan)
-            stds.append(np.std(finite_values).item() if len(finite_values) > 0 else np.nan)
             values_per_proportion.append(finite_values)
-        return means, stds, values_per_proportion
+        return values_per_proportion
 
     # (axis, x, values, color) of every swarm, drawn once the layout is final.
     swarms: list[tuple[plt.Axes, float, np.ndarray, str]] = []
@@ -121,15 +116,16 @@ def plot_filters(
         color: str = filter_colors[filter_key]
 
         for metric, metric_ax in (('Precision', precision_ax), ('Recall', recall_ax)):
-            means, stds, values_per_proportion = mean_std_per_proportion(label, metric)
+            values_per_proportion = values_per_proportion_for(label, metric)
+            medians, iqr_errors = median_and_iqr_errors(values_per_proportion)
             swarms.extend(
                 (metric_ax, x, values, color) for x, values in zip(x_positions + offset, values_per_proportion)
             )
 
             metric_ax.errorbar(
                 x=x_positions + offset,
-                y=means,
-                yerr=stds,
+                y=medians,
+                yerr=iqr_errors,
                 label=filter_display_names[filter_key],
                 color=color,
                 linestyle=filter_line_styles[filter_key],

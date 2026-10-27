@@ -20,6 +20,7 @@ from utils import (
     parse_test_label,
     convert_cases_l2fc_label,
     draw_beeswarm,
+    median_and_iqr_errors,
     with_points_path,
 )
 
@@ -111,6 +112,7 @@ def plot_filters_vs_n(
 ) -> None:
     """
     A3: precision (left) and recall (right) at BH-adjusted p < 0.05 against the cohort size, one line per prefilter.
+    Markers show the median over datasets, bars the interquartile range.
     With show_points, the value of every dataset is overlaid as a beeswarm and the lines are dodged further apart.
     """
     x_positions: np.ndarray = np.arange(len(n_per_group))
@@ -131,15 +133,13 @@ def plot_filters_vs_n(
         color: str = filter_colors[filter_key]
 
         for metric, ax in (('Precision', precision_ax), ('Recall', recall_ax)):
-            means, stds, _ = summarise(filter_df, metric, n_per_group)
-            swarms.extend(
-                (ax, x, values, color)
-                for x, values in zip(x_positions + offset, finite_values_per_n(filter_df, metric, n_per_group))
-            )
+            values_per_n: list[np.ndarray] = finite_values_per_n(filter_df, metric, n_per_group)
+            medians, iqr_errors = median_and_iqr_errors(values_per_n)
+            swarms.extend((ax, x, values, color) for x, values in zip(x_positions + offset, values_per_n))
             ax.errorbar(
                 x=x_positions + offset,
-                y=means,
-                yerr=stds,
+                y=medians,
+                yerr=iqr_errors,
                 label=filter_display_names[filter_key],
                 color=color,
                 linestyle=filter_line_styles[filter_key],
@@ -203,6 +203,7 @@ def plot_tests_vs_n(
     B1: without prefiltering, per test against the cohort size:
     (a) PR AUC (a ranking metric, no significance threshold),
     (b) recall and (c) precision of the calls at BH-adjusted p < alpha,
+    Markers in (a)-(c) show the median over datasets, bars the interquartile range.
     (d) the detectability floor: the smallest number of triples that must reach the minimal attainable p-value
         together before BH can call anything (line), against the number of triples that actually reach it (markers).
     With show_points, the value of every dataset is overlaid as a beeswarm in (a)-(d) and the tests are dodged
@@ -230,18 +231,15 @@ def plot_tests_vs_n(
         )
 
         auc_values: list[np.ndarray] = [np.asarray(pr_aucs[n][statistical_test], dtype=float) for n in n_per_group]
-        auc_ax.errorbar(
-            x_positions + offset, [v.mean() for v in auc_values], yerr=[v.std() for v in auc_values], **line_kwargs,
-        )
+        auc_medians, auc_iqr_errors = median_and_iqr_errors(auc_values)
+        auc_ax.errorbar(x_positions + offset, auc_medians, yerr=auc_iqr_errors, **line_kwargs)
         swarms.extend((auc_ax, x, values, color) for x, values in zip(x_positions + offset, auc_values))
 
         for metric, ax in (('Recall', recall_ax), ('Precision', precision_ax)):
-            means, stds, _ = summarise(test_df, metric, n_per_group)
-            ax.errorbar(x_positions + offset, means, yerr=stds, **line_kwargs)
-            swarms.extend(
-                (ax, x, values, color)
-                for x, values in zip(x_positions + offset, finite_values_per_n(test_df, metric, n_per_group))
-            )
+            values_per_n = finite_values_per_n(test_df, metric, n_per_group)
+            medians, iqr_errors = median_and_iqr_errors(values_per_n)
+            ax.errorbar(x_positions + offset, medians, yerr=iqr_errors, **line_kwargs)
+            swarms.extend((ax, x, values, color) for x, values in zip(x_positions + offset, values_per_n))
 
         # Observed triples at (or below) the floor, only where the floor binds (more than one triple needed).
         # Where one triple suffices, the floor is far below any realised p-value and the count carries no meaning.
