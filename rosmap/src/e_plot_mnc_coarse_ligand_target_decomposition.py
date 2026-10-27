@@ -110,7 +110,7 @@ def plot_condition_boxes(ax, values_per_condition: list[np.ndarray], condition_n
         jitter = rng.uniform(-0.18, 0.18, size=values.shape[0])
         ax.scatter(position + jitter, values, s=1.5, color='black', alpha=0.5, linewidths=0, zorder=3)
 
-    # Bracket above both boxes, labelled with the BH-adjusted p-value
+    # Bracket above both boxes, labelled with the BH-adjusted p-value (stated in the caption)
     if not np.isnan(p_adj):
         y_max = max(values.max() for values in values_per_condition)
         y_min = min(values.min() for values in values_per_condition)
@@ -123,7 +123,7 @@ def plot_condition_boxes(ax, values_per_condition: list[np.ndarray], condition_n
             color='black', linewidth=0.5,
         )
         ax.text(
-            positions.mean(), bracket_y + 1.4 * bracket_height, format_p_value(p_adj),
+            positions.mean(), bracket_y + 1.4 * bracket_height, format_p_value(p_adj, prefix=None),
             ha='center', va='bottom', fontsize=6,
         )
         ax.set_ylim(y_min - 0.04 * y_range, y_max + 0.22 * y_range)
