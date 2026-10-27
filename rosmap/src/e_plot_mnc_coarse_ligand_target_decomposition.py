@@ -13,7 +13,7 @@ plt.rcParams['pdf.fonttype'] = 42
 
 import argparse
 
-from plotting.utils import cell_type_to_short, condition_colors, get_significant_tetrads, save_no_significant_tetrads_figure, tetrad_file_stem, save_single_panel
+from plotting.utils import cell_type_to_short, condition_colors, format_p_value, get_significant_tetrads, save_no_significant_tetrads_figure, tetrad_file_stem, save_single_panel
 
 parser = argparse.ArgumentParser(description='Decompose the communication score of every significant tetrad into ligand and target abundance.')
 
@@ -47,7 +47,7 @@ parser.add_argument(
     '--path_to_ligand_target_tests_csv',
     type=str,
     required=True,
-    help='Raw and BH-adjusted p-values behind the significance stars of the ligand and target panels.'
+    help='Raw and BH-adjusted p-values shown on the ligand and target panels.'
 )
 parser.add_argument(
     '--statistical_test',
@@ -87,16 +87,6 @@ height_in_cm_per_panel: float = args.height_in_cm_per_panel
 cm: float = 1/2.54  # cm to inches conversion factor
 
 
-def p_value_to_stars(p: float) -> str:
-    if p < 0.001:
-        return '***'
-    if p < 0.01:
-        return '**'
-    if p < 0.05:
-        return '*'
-    return 'ns'
-
-
 def plot_condition_boxes(ax, values_per_condition: list[np.ndarray], condition_names: tuple[str, str], title: str, p_adj: float):
     rng = np.random.default_rng(0)
     positions = np.arange(len(values_per_condition))
@@ -120,7 +110,7 @@ def plot_condition_boxes(ax, values_per_condition: list[np.ndarray], condition_n
         jitter = rng.uniform(-0.18, 0.18, size=values.shape[0])
         ax.scatter(position + jitter, values, s=1.5, color='black', alpha=0.5, linewidths=0, zorder=3)
 
-    # Significance bracket above both boxes; the stars encode the BH-adjusted p-value (stated in the caption)
+    # Bracket above both boxes, labelled with the BH-adjusted p-value
     if not np.isnan(p_adj):
         y_max = max(values.max() for values in values_per_condition)
         y_min = min(values.min() for values in values_per_condition)
@@ -132,10 +122,9 @@ def plot_condition_boxes(ax, values_per_condition: list[np.ndarray], condition_n
             [bracket_y, bracket_y + bracket_height, bracket_y + bracket_height, bracket_y],
             color='black', linewidth=0.5,
         )
-        stars = p_value_to_stars(p_adj)
         ax.text(
-            positions.mean(), bracket_y + 1.4 * bracket_height, stars,
-            ha='center', va='bottom', fontsize=6 if stars == 'ns' else 7,
+            positions.mean(), bracket_y + 1.4 * bracket_height, format_p_value(p_adj),
+            ha='center', va='bottom', fontsize=6,
         )
         ax.set_ylim(y_min - 0.04 * y_range, y_max + 0.22 * y_range)
 
@@ -192,7 +181,6 @@ def test_ligands_and_targets(mnc_object: MultiNeuronChatObject, significant: pd.
     tests['p_adj'] = np.nan
     tested = tests['p'].notna()
     tests.loc[tested, 'p_adj'] = stats.false_discovery_control(tests.loc[tested, 'p'], method='bh')
-    tests['stars'] = [p_value_to_stars(p) if not np.isnan(p) else '' for p in tests['p_adj']]
     tests.insert(3, 'statistical_test', statistical_test)
     return tests
 
@@ -229,7 +217,7 @@ def main():
     significant: pd.DataFrame = get_significant_tetrads(mnc_object, statistical_test, significance_threshold)
     if significant.empty:
         save_no_significant_tetrads_figure([path_to_decomposition_png, path_to_decomposition_pdf], statistical_test, significance_threshold)
-        pd.DataFrame(columns=['side', 'cell_type', 'interaction', 'statistical_test', 'p', 'p_adj', 'stars']).to_csv(path_to_ligand_target_tests_csv, index=False)
+        pd.DataFrame(columns=['side', 'cell_type', 'interaction', 'statistical_test', 'p', 'p_adj']).to_csv(path_to_ligand_target_tests_csv, index=False)
         return
     condition_names = mnc_object.condition_names
 
