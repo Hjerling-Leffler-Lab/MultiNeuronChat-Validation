@@ -300,3 +300,8 @@ http-client.private.env.json
 
 # Github Copilot persisted session migrations, see: https://github.com/microsoft/copilot-intellij-feedback/issues/712#issuecomment-3322062215
 .idea/**/copilot.data.migration.*.xml
+# ROSMAP inputs and outputs are controlled-access (individual-level) and never go into the repo
+rosmap/data/
+rosmap/results/
+rosmap/logs/
+.snakemake/
