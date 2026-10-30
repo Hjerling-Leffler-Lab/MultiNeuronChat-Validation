@@ -4,7 +4,7 @@ statistical_tests = ["CVM"]
 
 # BH-adjusted p-value thresholds per test for the plots, independent of the MNC run above;
 # each threshold gets its own figure set under results/figs/{resolution}/{test}/padj_{threshold}/
-plot_thresholds = {"CVM": [0.1, 0.05]}
+plot_thresholds = {"CVM": [0.05]}
 plot_test_dirs = [f"{test}/padj_{threshold}" for test, thresholds in plot_thresholds.items() for threshold in thresholds]
 
 # Both annotations come out of the same MNC run (run_rosmap_coarse); coarse = grouping.by, fine = cell.type
