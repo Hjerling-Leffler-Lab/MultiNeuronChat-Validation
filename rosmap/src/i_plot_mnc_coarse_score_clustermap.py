@@ -8,9 +8,7 @@ from scipy.cluster import hierarchy
 
 from multineuronchat import MultiNeuronChatObject
 
-import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 import seaborn as sns
 
 import argparse
@@ -62,12 +60,6 @@ parser.add_argument(
     help='Condition whose donors are clustered; z-scores are computed within this condition.'
 )
 parser.add_argument(
-    '--path_to_clinical_data',
-    type=str,
-    default=None,
-    help='Optional ROSMAP clinical table; if given, Braak, CERAD, MMSE, age and sex are shown as colour bars above the donors.'
-)
-parser.add_argument(
     '--width_in_cm',
     type=float,
     default=10.0,
@@ -89,7 +81,6 @@ statistical_test: str = args.statistical_test
 selection: str = args.selection
 significance_threshold: float = args.significance_threshold
 condition: str = args.condition
-path_to_clinical_data: str | None = args.path_to_clinical_data
 
 width_in_cm: float = args.width_in_cm
 height_in_cm: float = args.height_in_cm
@@ -98,19 +89,6 @@ cm: float = 1/2.54  # cm to inches conversion factor
 
 # z-scores beyond this are clipped in the colour scale only, not in the clustering
 z_score_limit: float = 3.0
-
-subject_label_column: str = 'individualID'
-
-# Clinical covariates shown above the donors: column -> (label, colour map); msex is categorical (1 = male)
-clinical_covariates: dict[str, tuple[str, str]] = {
-    'braaksc': ('Braak', 'Purples'),
-    'ceradsc': ('CERAD', 'Purples_r'),  # 1 = definite AD ... 4 = no AD, so reversed to make darker = more pathology
-    'cts_mmse30_lv': ('MMSE', 'Greens'),
-    'age_death': ('Age', 'Greys'),
-    'msex': ('Sex', None),
-}
-sex_colors: dict[int, str] = {0: '#E5A3A3', 1: '#8DB3D6'}
-
 
 def select_tetrads(mnc_object: MultiNeuronChatObject) -> pd.DataFrame:
     """Return (source, receiver, interaction, p, p_adj) of the tetrads to show, sorted by raw p-value."""
@@ -140,34 +118,6 @@ def get_score_matrix(mnc_object: MultiNeuronChatObject, tetrads: pd.DataFrame) -
         for row in tetrads.itertuples()
     }
     return pd.DataFrame(rows, index=scores['subject'].to_numpy()).T
-
-
-def load_clinical_data(subjects: pd.Index) -> pd.DataFrame:
-    """Clinical covariates of the given donors, numeric, NaN where unknown."""
-    clinical_data: pd.DataFrame = pd.read_csv(path_to_clinical_data)
-    clinical_data = clinical_data.drop_duplicates(subset=subject_label_column).set_index(subject_label_column)
-    # age_death is censored at 90 and stored as '90+'
-    clinical_data['age_death'] = clinical_data['age_death'].astype(str).str.replace('+', '', regex=False)
-    clinical_data = clinical_data[list(clinical_covariates)].apply(pd.to_numeric, errors='coerce')
-    return clinical_data.reindex(subjects)
-
-
-def get_clinical_colors(clinical_data: pd.DataFrame) -> tuple[pd.DataFrame, list[Patch]]:
-    """One colour bar per covariate (white = unknown), plus legend handles with the lowest and highest value."""
-    colors = pd.DataFrame(index=clinical_data.index)
-    handles = []
-    for column, (label, cmap_name) in clinical_covariates.items():
-        values = clinical_data[column]
-        if cmap_name is None:
-            colors[label] = values.map(sex_colors).fillna('white')
-            handles += [Patch(color=sex_colors[0], label='Female'), Patch(color=sex_colors[1], label='Male')]
-            continue
-        cmap = plt.get_cmap(cmap_name)
-        low, high = values.min(), values.max()
-        scaled = (values - low) / (high - low) if high > low else values * 0.0
-        colors[label] = [matplotlib.colors.to_hex(cmap(0.15 + 0.85 * value)) if pd.notna(value) else 'white' for value in scaled]
-        handles += [Patch(color=cmap(0.15), label=f'{label} {low:g}'), Patch(color=cmap(1.0), label=f'{label} {high:g}')]
-    return colors, handles
 
 
 def main():
@@ -201,13 +151,6 @@ def main():
     donor_order = z_scores.columns[hierarchy.leaves_list(donor_linkage)]
     donor_table = pd.DataFrame({'subject': donor_order, 'dendrogram_position': np.arange(len(donor_order))})
 
-    col_colors = None
-    legend_handles: list[Patch] = []
-    if path_to_clinical_data is not None:
-        clinical_data = load_clinical_data(donor_order)
-        donor_table = donor_table.join(clinical_data.reset_index(drop=True))
-        col_colors, legend_handles = get_clinical_colors(clinical_data)
-
     donor_table.to_csv(path_to_donor_order_csv, index=False)
 
     grid = sns.clustermap(
@@ -216,7 +159,6 @@ def main():
         row_linkage=tetrad_linkage,
         col_linkage=donor_linkage,
         row_cluster=tetrad_linkage is not None,
-        col_colors=col_colors,
         cmap='RdBu_r',
         center=0,
         vmin=-z_score_limit,
@@ -225,7 +167,6 @@ def main():
         yticklabels=True,
         figsize=(width_in_cm * cm, height_in_cm * cm),
         dendrogram_ratio=(0.08, 2.0 / height_in_cm),
-        colors_ratio=(0.02, 0.3 / height_in_cm),
         cbar_pos=(0.01, 0.82, 0.015, 0.12),
         tree_kws={'linewidths': 0.4},
     )
@@ -233,26 +174,16 @@ def main():
     grid.ax_heatmap.set_xlabel(f'{condition} donors (n = {z_scores.shape[1]})', fontsize=7)
     grid.ax_heatmap.set_ylabel('')
     grid.ax_heatmap.tick_params(axis='y', labelsize=6, length=0)
-    if col_colors is not None:
-        grid.ax_col_colors.tick_params(axis='y', labelsize=6, length=0)
 
     grid.ax_cbar.set_yticks([-z_score_limit, 0, z_score_limit])
     grid.ax_cbar.set_yticklabels([f'≤ {-z_score_limit:g}', '0', f'≥ {z_score_limit:g}'])
     grid.ax_cbar.tick_params(labelsize=5)
     grid.ax_cbar.set_title('z-score', fontsize=6)
 
-    # Title and legend go inside the figure, so the saved file is exactly width_in_cm x height_in_cm
+    # The title goes inside the figure, so the saved file is exactly width_in_cm x height_in_cm
     title_height: float = 0.6 * cm / grid.figure.get_figheight()
-    legend_height: float = (0.7 * cm / grid.figure.get_figheight()) if legend_handles else 0.0
-    grid.figure.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0.0, legend_height, 1.0, 1.0 - title_height))
+    grid.figure.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0.0, 0.0, 1.0, 1.0 - title_height))
     grid.ax_cbar.set_position((0.035, 0.82 - title_height, 0.015, 0.12))  # far enough right for the "z-score" title
-
-    if legend_handles:
-        # Below the heatmap, one column per covariate
-        grid.figure.legend(
-            handles=legend_handles, loc='lower center', bbox_to_anchor=(0.5, 0.0), ncol=len(clinical_covariates),
-            fontsize=5, frameon=False, handlelength=1.0, columnspacing=1.0,
-        )
 
     selection_label = f'adj. p < {significance_threshold}' if selection == 'significant' else f'top {len(z_scores)} by p-value'
     grid.figure.suptitle(f'{statistical_test}: communication scores, {selection_label}, {condition} donors only', fontsize=7, y=0.995, va='top')

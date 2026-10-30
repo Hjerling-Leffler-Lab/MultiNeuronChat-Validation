@@ -414,7 +414,6 @@ rule plot_score_clustermap_AD_only:
         path_to_script="src/i_plot_mnc_coarse_score_clustermap.py",
 
         path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
-        path_to_clinical_data="data/raw/ROSMAP_clinical.csv",
     output:
         path_to_clustermap_png="results/figs/{resolution}/{test}/padj_{threshold}/png/score_clustermap_AD_only_{selection}.png",
         path_to_clustermap_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/score_clustermap_AD_only_{selection}.pdf",
@@ -440,6 +439,5 @@ rule plot_score_clustermap_AD_only:
             --statistical_test {params.statistical_test} \
             --selection {wildcards.selection} \
             --significance_threshold {params.significance_threshold} \
-            --condition AD \
-            --path_to_clinical_data {input.path_to_clinical_data}
+            --condition AD
         """

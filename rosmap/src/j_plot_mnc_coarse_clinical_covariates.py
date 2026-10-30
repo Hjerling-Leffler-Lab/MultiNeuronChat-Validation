@@ -354,11 +354,11 @@ def plot_summary_heatmap(summary: pd.DataFrame):
     for i in range(len(row_order)):
         for j in range(len(column_order)):
             value = p.iat[i, j]
-            ax.text(j, i, format_p_value(value), ha='center', va='center', fontsize=4.5, fontweight='bold' if value < 0.05 else 'normal')
+            ax.text(j, i, format_p_value(value), ha='center', va='center', fontsize=4, fontweight='bold' if value < 0.05 else 'normal')
     ax.set_xticks(range(len(column_order)))
     ax.set_xticklabels(column_order, fontsize=6, rotation=90)
     ax.set_yticks(range(len(row_order)))
-    ax.set_yticklabels(row_order, fontsize=6)
+    ax.set_yticklabels([label.replace('  ', '\n', 1) for label in row_order], fontsize=6)  # cell types / ligand-target on two lines, so the cells get more width
     ax.tick_params(length=0)
     colorbar = fig.colorbar(image, ax=ax, fraction=0.04, pad=0.02)
     colorbar.set_label('Spearman ρ (sex: rank-biserial r)', fontsize=6)
