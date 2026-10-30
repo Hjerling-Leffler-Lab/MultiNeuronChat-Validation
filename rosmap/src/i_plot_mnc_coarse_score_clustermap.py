@@ -11,6 +11,7 @@ from multineuronchat import MultiNeuronChatObject
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from matplotlib.transforms import Bbox
 import seaborn as sns
 
 import argparse
@@ -70,7 +71,7 @@ parser.add_argument(
 parser.add_argument(
     '--width_in_cm',
     type=float,
-    default=18.0,
+    default=10.0,
 )
 parser.add_argument(
     '--height_in_cm_per_tetrad',
@@ -242,13 +243,20 @@ def main():
     grid.ax_cbar.set_title('z-score', fontsize=6)
 
     if legend_handles:
-        grid.figure.legend(handles=legend_handles, loc='upper right', bbox_to_anchor=(0.0, 0.8), fontsize=5, frameon=False)  # left of the tetrad dendrogram
+        # Below the heatmap, one column per covariate, so the figure keeps its width
+        grid.figure.legend(
+            handles=legend_handles, loc='upper center', bbox_to_anchor=(0.5, 0.0), ncol=len(clinical_covariates),
+            fontsize=5, frameon=False, handlelength=1.0, columnspacing=1.0,
+        )
 
     selection_label = f'adj. p < {significance_threshold}' if selection == 'significant' else f'top {len(z_scores)} by p-value'
     grid.figure.suptitle(f'{statistical_test}: communication scores, {selection_label}, {condition} donors only', fontsize=7, y=1.0, va='bottom')
 
-    grid.savefig(path_to_clustermap_png, dpi=300, bbox_inches='tight')
-    grid.savefig(path_to_clustermap_pdf, dpi=300, bbox_inches='tight')
+    # Crop to the content vertically only, so the saved figure is exactly width_in_cm wide (unless something sticks out)
+    tight = grid.figure.get_tightbbox(grid.figure.canvas.get_renderer())
+    save_bbox = Bbox.from_extents(min(0.0, tight.x0), tight.y0 - 0.05, max(grid.figure.get_figwidth(), tight.x1), tight.y1 + 0.05)
+    grid.savefig(path_to_clustermap_png, dpi=300, bbox_inches=save_bbox)
+    grid.savefig(path_to_clustermap_pdf, dpi=300, bbox_inches=save_bbox)
     plt.close(grid.figure)
 
 

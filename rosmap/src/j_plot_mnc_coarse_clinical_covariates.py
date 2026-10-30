@@ -79,6 +79,11 @@ parser.add_argument(
     type=float,
     default=5.0,
 )
+parser.add_argument(
+    '--summary_heatmap_width_in_cm',
+    type=float,
+    default=10.0,
+)
 args = parser.parse_args()
 
 path_to_output_dir: str = args.path_to_output_dir
@@ -338,7 +343,7 @@ def plot_summary_heatmap(summary: pd.DataFrame):
     effect, p = effect.loc[row_order, column_order], p.loc[row_order, column_order]
 
     limit = max(0.3, float(np.nanmax(np.abs(effect.to_numpy()))))
-    fig, ax = plt.subplots(1, 1, figsize=((4 + 1.1 * len(column_order)) * cm, (2.5 + 0.7 * len(row_order)) * cm))
+    fig, ax = plt.subplots(1, 1, figsize=(args.summary_heatmap_width_in_cm * cm, (2.5 + 0.7 * len(row_order)) * cm))
     image = ax.imshow(effect.to_numpy(dtype=float), cmap='RdBu_r', vmin=-limit, vmax=limit, aspect='auto')
     for i in range(len(row_order)):
         for j in range(len(column_order)):
