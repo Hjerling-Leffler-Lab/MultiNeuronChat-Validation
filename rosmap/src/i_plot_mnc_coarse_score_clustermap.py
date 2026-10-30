@@ -9,6 +9,7 @@ from scipy.cluster import hierarchy
 
 from multineuronchat import MultiNeuronChatObject
 
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import seaborn as sns
@@ -62,6 +63,18 @@ parser.add_argument(
     help='Number of clusters the donor dendrogram is cut into to compare against the condition labels.'
 )
 parser.add_argument(
+    '--condition',
+    type=str,
+    default='all',
+    help="Cluster only the donors of this condition (e.g. 'AD'), or 'all' to cluster every donor."
+)
+parser.add_argument(
+    '--path_to_clinical_data',
+    type=str,
+    default=None,
+    help='Optional ROSMAP clinical table; if given, donor clusters are compared on Braak, CERAD, MMSE, age and sex.'
+)
+parser.add_argument(
     '--width_in_cm',
     type=float,
     default=18.0,
@@ -82,6 +95,8 @@ statistical_test: str = args.statistical_test
 selection: str = args.selection
 significance_threshold: float = args.significance_threshold
 n_donor_clusters: int = args.n_donor_clusters
+condition: str = args.condition
+path_to_clinical_data: str | None = args.path_to_clinical_data
 
 width_in_cm: float = args.width_in_cm
 height_in_cm_per_tetrad: float = args.height_in_cm_per_tetrad
@@ -90,6 +105,18 @@ cm: float = 1/2.54  # cm to inches conversion factor
 
 # z-scores beyond this are clipped in the colour scale only, not in the clustering
 z_score_limit: float = 3.0
+
+subject_label_column: str = 'individualID'
+
+# Clinical covariates the donor clusters are compared on: column -> (label, colour map); msex is categorical (1 = male)
+clinical_covariates: dict[str, tuple[str, str]] = {
+    'braaksc': ('Braak', 'Purples'),
+    'ceradsc': ('CERAD', 'Purples_r'),  # 1 = definite AD ... 4 = no AD, so reversed to make darker = more pathology
+    'cts_mmse30_lv': ('MMSE', 'Greens'),
+    'age_death': ('Age', 'Greys'),
+    'msex': ('Sex', None),
+}
+sex_colors: dict[int, str] = {0: '#E5A3A3', 1: '#8DB3D6'}
 
 
 def select_tetrads(mnc_object: MultiNeuronChatObject) -> pd.DataFrame:
@@ -127,6 +154,52 @@ def get_score_matrix(mnc_object: MultiNeuronChatObject, tetrads: pd.DataFrame) -
     return pd.DataFrame(rows, index=conditions.index).T, conditions
 
 
+def load_clinical_data(subjects: pd.Index) -> pd.DataFrame:
+    """Clinical covariates of the given donors, numeric, NaN where unknown."""
+    clinical_data: pd.DataFrame = pd.read_csv(path_to_clinical_data)
+    clinical_data = clinical_data.drop_duplicates(subset=subject_label_column).set_index(subject_label_column)
+    # age_death is censored at 90 and stored as '90+'
+    clinical_data['age_death'] = clinical_data['age_death'].astype(str).str.replace('+', '', regex=False)
+    clinical_data = clinical_data[list(clinical_covariates)].apply(pd.to_numeric, errors='coerce')
+    return clinical_data.reindex(subjects)
+
+
+def get_clinical_colors(clinical_data: pd.DataFrame) -> tuple[pd.DataFrame, list[Patch]]:
+    """One colour bar per covariate (white = unknown), plus legend handles with the lowest and highest value."""
+    colors = pd.DataFrame(index=clinical_data.index)
+    handles = []
+    for column, (label, cmap_name) in clinical_covariates.items():
+        values = clinical_data[column]
+        if cmap_name is None:
+            colors[label] = values.map(sex_colors).fillna('white')
+            handles += [Patch(color=sex_colors[0], label='Female'), Patch(color=sex_colors[1], label='Male')]
+            continue
+        cmap = plt.get_cmap(cmap_name)
+        low, high = values.min(), values.max()
+        scaled = (values - low) / (high - low) if high > low else values * 0.0
+        colors[label] = [matplotlib.colors.to_hex(cmap(0.15 + 0.85 * value)) if pd.notna(value) else 'white' for value in scaled]
+        handles += [Patch(color=cmap(0.15), label=f'{label} {low:g}'), Patch(color=cmap(1.0), label=f'{label} {high:g}')]
+    return colors, handles
+
+
+def compare_clusters_on_clinical_data(donor_clusters: pd.Series, clinical_data: pd.DataFrame) -> pd.DataFrame:
+    """Kruskal-Wallis across donor clusters for every numeric covariate, chi-squared for sex."""
+    rows = []
+    for column, (label, _) in clinical_covariates.items():
+        values = clinical_data[column].dropna()
+        clusters = donor_clusters[values.index]
+        if column == 'msex':
+            contingency = pd.crosstab(clusters, values)
+            p = stats.chi2_contingency(contingency.to_numpy())[1] if min(contingency.shape) > 1 else np.nan
+            per_cluster = values.groupby(clusters).mean().rename(lambda cluster: f'C{cluster} fraction male')
+        else:
+            groups = [group.to_numpy() for _, group in values.groupby(clusters)]
+            p = stats.kruskal(*groups).pvalue if len(groups) > 1 else np.nan
+            per_cluster = values.groupby(clusters).median().rename(lambda cluster: f'C{cluster} median')
+        rows.append({'covariate': label, 'test': 'chi2' if column == 'msex' else 'kruskal', 'n': len(values), 'p': p, **per_cluster.to_dict()})
+    return pd.DataFrame(rows)
+
+
 def main():
     for output_path in [path_to_clustermap_png, path_to_clustermap_pdf, path_to_donor_clusters_csv]:
         output_dir = os.path.dirname(output_path)
@@ -135,6 +208,13 @@ def main():
 
     mnc_object: MultiNeuronChatObject = MultiNeuronChatObject.load(path_to_mnc_object)
 
+    if condition == 'all':
+        condition_names: list[str] = list(mnc_object.condition_names)
+    elif condition in mnc_object.condition_names:
+        condition_names = [condition]
+    else:
+        raise ValueError(f"Unknown condition '{condition}', expected 'all' or one of {list(mnc_object.condition_names)}")
+
     tetrads: pd.DataFrame = select_tetrads(mnc_object)
     if tetrads.empty:
         save_no_significant_tetrads_figure([path_to_clustermap_png, path_to_clustermap_pdf], statistical_test, significance_threshold)
@@ -142,6 +222,8 @@ def main():
         return
 
     scores, conditions = get_score_matrix(mnc_object, tetrads)
+    conditions = conditions[conditions.isin(condition_names)]
+    scores = scores[conditions.index]
 
     # Scores differ by orders of magnitude between tetrads, so standardise every tetrad across donors.
     # Donors lacking a cell type have no score; they are set to the tetrad mean (z = 0) for clustering and drawn grey.
@@ -152,26 +234,50 @@ def main():
     donor_linkage = hierarchy.linkage(z_scores_filled.T.to_numpy(), method='ward')
     tetrad_linkage = hierarchy.linkage(z_scores_filled.to_numpy(), method='ward') if len(z_scores) > 1 else None
 
-    # How well do the unsupervised donor clusters recover NCI vs AD?
     donor_clusters = pd.Series(hierarchy.fcluster(donor_linkage, t=n_donor_clusters, criterion='maxclust'), index=z_scores.columns)
-    contingency = pd.crosstab(donor_clusters, conditions)
-    _, p_chi2, _, _ = stats.chi2_contingency(contingency.to_numpy())
-    pd.DataFrame({'subject': donor_clusters.index, 'condition': conditions[donor_clusters.index].to_numpy(), 'cluster': donor_clusters.to_numpy()}) \
-        .to_csv(path_to_donor_clusters_csv, index=False)
+    donor_table = pd.DataFrame({'subject': donor_clusters.index, 'condition': conditions[donor_clusters.index].to_numpy(), 'cluster': donor_clusters.to_numpy()})
 
-    cluster_summary = ', '.join(
-        f'C{cluster}: ' + '/'.join(f'{contingency.loc[cluster, condition]} {condition}' for condition in mnc_object.condition_names)
-        for cluster in contingency.index
-    )
+    # Colour bars above the heatmap: the donor clusters, the condition (if more than one) and the clinical covariates
+    cluster_palette = sns.color_palette('Set2', n_donor_clusters)
+    col_colors = [donor_clusters.map(lambda cluster: cluster_palette[cluster - 1]).rename('Cluster')]
+    legend_handles = [Patch(color=cluster_palette[cluster - 1], label=f'C{cluster}') for cluster in range(1, n_donor_clusters + 1)]
 
-    height_in_cm = 5.0 + height_in_cm_per_tetrad * len(z_scores)
+    if len(condition_names) > 1:
+        # How well do the unsupervised donor clusters recover NCI vs AD?
+        contingency = pd.crosstab(donor_clusters, conditions)
+        _, p_chi2, _, _ = stats.chi2_contingency(contingency.to_numpy())
+        cluster_summary = f'{n_donor_clusters} donor clusters vs condition: ' + ', '.join(
+            f'C{cluster}: ' + '/'.join(f'{contingency.loc[cluster, condition_name]} {condition_name}' for condition_name in condition_names)
+            for cluster in contingency.index
+        ) + f' (χ² p = {p_chi2:.2g})'
+        col_colors.append(conditions.map(condition_colors).rename('Condition'))
+        legend_handles += [Patch(color=condition_colors[condition_name], label=condition_name) for condition_name in condition_names]
+    else:
+        cluster_sizes = donor_clusters.value_counts().sort_index()
+        cluster_summary = f'{n_donor_clusters} donor clusters: ' + ', '.join(f'C{cluster}: n = {size}' for cluster, size in cluster_sizes.items())
+
+    if path_to_clinical_data is not None:
+        clinical_data = load_clinical_data(donor_clusters.index)
+        cluster_tests = compare_clusters_on_clinical_data(donor_clusters, clinical_data)
+        cluster_tests.to_csv(path_to_donor_clusters_csv.removesuffix('.csv') + '_clinical_tests.csv', index=False)
+        cluster_summary += '\nClusters vs clinical (Kruskal-Wallis, sex: χ²): ' + ', '.join(
+            f'{row.covariate} p = {row.p:.2g}' for row in cluster_tests.itertuples()
+        )
+        donor_table = donor_table.join(clinical_data.reset_index(drop=True))
+        clinical_colors, clinical_handles = get_clinical_colors(clinical_data)
+        col_colors += [clinical_colors[column] for column in clinical_colors.columns]
+        legend_handles += clinical_handles
+
+    donor_table.to_csv(path_to_donor_clusters_csv, index=False)
+
+    height_in_cm = 5.0 + height_in_cm_per_tetrad * len(z_scores) + 0.3 * len(col_colors)
     grid = sns.clustermap(
         z_scores_filled,
         mask=missing,
         row_linkage=tetrad_linkage,
         col_linkage=donor_linkage,
         row_cluster=tetrad_linkage is not None,
-        col_colors=conditions.map(condition_colors).rename('Condition'),
+        col_colors=pd.concat(col_colors, axis=1),
         cmap='RdBu_r',
         center=0,
         vmin=-z_score_limit,
@@ -185,7 +291,8 @@ def main():
         tree_kws={'linewidths': 0.4},
     )
     grid.ax_heatmap.set_facecolor('lightgrey')
-    grid.ax_heatmap.set_xlabel(f'Donors (n = {z_scores.shape[1]})', fontsize=7)
+    donor_label = 'Donors' if len(condition_names) > 1 else f'{condition_names[0]} donors'
+    grid.ax_heatmap.set_xlabel(f'{donor_label} (n = {z_scores.shape[1]})', fontsize=7)
     grid.ax_heatmap.set_ylabel('')
     grid.ax_heatmap.tick_params(axis='y', labelsize=6, length=0)
     grid.ax_col_colors.tick_params(axis='y', labelsize=6, length=0)
@@ -196,15 +303,15 @@ def main():
     grid.ax_cbar.set_title('z-score', fontsize=6)
 
     grid.figure.legend(
-        handles=[Patch(color=condition_colors[condition], label=condition) for condition in mnc_object.condition_names],
-        loc='upper left', bbox_to_anchor=(0.0, 0.8), fontsize=6, frameon=False,
+        handles=legend_handles,
+        loc='upper left', bbox_to_anchor=(0.0, 0.8), fontsize=6 if len(legend_handles) <= 6 else 5, frameon=False,
     )
 
     selection_label = f'adj. p < {significance_threshold}' if selection == 'significant' else f'top {len(z_scores)} by p-value'
+    donor_selection_label = '' if len(condition_names) > 1 else f', {condition_names[0]} donors only'
     grid.figure.suptitle(
-        f'{statistical_test}: communication scores, {selection_label}\n'
-        f'{n_donor_clusters} donor clusters vs condition: {cluster_summary} (χ² p = {p_chi2:.2g})',
-        fontsize=7, y=1.02,
+        f'{statistical_test}: communication scores, {selection_label}{donor_selection_label}\n{cluster_summary}',
+        fontsize=7, y=1.0, va='bottom',  # anchored at the bottom so the clinical line does not run into the dendrogram
     )
 
     grid.savefig(path_to_clustermap_png, dpi=300, bbox_inches='tight')

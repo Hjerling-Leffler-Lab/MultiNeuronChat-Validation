@@ -50,6 +50,7 @@ rule plot_all:
         expand("results/figs/{resolution}/{test_dir}/{ext}/significant_vs_severity.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
         expand("results/figs/{resolution}/{test_dir}/{ext}/significant_vs_confounders.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
         expand("results/figs/{resolution}/{test_dir}/{ext}/score_clustermap_{selection}.{ext}",resolution=resolutions,test_dir=plot_test_dirs,selection=clustermap_selections,ext=["png", "pdf"]),
+        expand("results/figs/{resolution}/{test_dir}/{ext}/score_clustermap_AD_only_{selection}.{ext}",resolution=resolutions,test_dir=plot_test_dirs,selection=clustermap_selections,ext=["png", "pdf"]),
 
 
 rule join_rosmap_data:
@@ -439,4 +440,40 @@ rule plot_score_clustermap:
             --statistical_test {params.statistical_test} \
             --selection {wildcards.selection} \
             --significance_threshold {params.significance_threshold}
+        """
+
+rule plot_score_clustermap_AD_only:
+    input:
+        path_to_script="src/i_plot_mnc_coarse_score_clustermap.py",
+
+        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
+        path_to_clinical_data="data/raw/ROSMAP_clinical.csv",
+    output:
+        path_to_clustermap_png="results/figs/{resolution}/{test}/padj_{threshold}/png/score_clustermap_AD_only_{selection}.png",
+        path_to_clustermap_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/score_clustermap_AD_only_{selection}.pdf",
+        path_to_donor_clusters_csv="results/figs/{resolution}/{test}/padj_{threshold}/score_clustermap_AD_only_donor_clusters_{selection}.csv",
+        path_to_clinical_tests_csv="results/figs/{resolution}/{test}/padj_{threshold}/score_clustermap_AD_only_donor_clusters_{selection}_clinical_tests.csv",
+    wildcard_constraints:
+        resolution="|".join(resolutions),
+        threshold=r"[0-9.]+",
+        selection="|".join(clustermap_selections),
+    params:
+        statistical_test="{test}",
+        significance_threshold="{threshold}",
+    resources:
+        slurm_partition="cpu",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_clustermap_png {output.path_to_clustermap_png} \
+            --path_to_clustermap_pdf {output.path_to_clustermap_pdf} \
+            --path_to_donor_clusters_csv {output.path_to_donor_clusters_csv} \
+            --statistical_test {params.statistical_test} \
+            --selection {wildcards.selection} \
+            --significance_threshold {params.significance_threshold} \
+            --condition AD \
+            --path_to_clinical_data {input.path_to_clinical_data}
         """
