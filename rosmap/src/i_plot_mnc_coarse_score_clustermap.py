@@ -11,7 +11,6 @@ from multineuronchat import MultiNeuronChatObject
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-from matplotlib.transforms import Bbox
 import seaborn as sns
 
 import argparse
@@ -74,9 +73,10 @@ parser.add_argument(
     default=10.0,
 )
 parser.add_argument(
-    '--height_in_cm_per_tetrad',
+    '--height_in_cm',
     type=float,
-    default=0.45,
+    default=10.0,
+    help='Figure height; with the 10 cm default width the clustermap matches the clinical covariate summary heatmap.'
 )
 args = parser.parse_args()
 
@@ -92,7 +92,7 @@ condition: str = args.condition
 path_to_clinical_data: str | None = args.path_to_clinical_data
 
 width_in_cm: float = args.width_in_cm
-height_in_cm_per_tetrad: float = args.height_in_cm_per_tetrad
+height_in_cm: float = args.height_in_cm
 
 cm: float = 1/2.54  # cm to inches conversion factor
 
@@ -210,7 +210,6 @@ def main():
 
     donor_table.to_csv(path_to_donor_order_csv, index=False)
 
-    height_in_cm = 5.0 + height_in_cm_per_tetrad * len(z_scores) + (0.3 * col_colors.shape[1] if col_colors is not None else 0.0)
     grid = sns.clustermap(
         z_scores_filled,
         mask=missing,
@@ -242,21 +241,24 @@ def main():
     grid.ax_cbar.tick_params(labelsize=5)
     grid.ax_cbar.set_title('z-score', fontsize=6)
 
+    # Title and legend go inside the figure, so the saved file is exactly width_in_cm x height_in_cm
+    title_height: float = 0.6 * cm / grid.figure.get_figheight()
+    legend_height: float = (0.7 * cm / grid.figure.get_figheight()) if legend_handles else 0.0
+    grid.figure.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0.0, legend_height, 1.0, 1.0 - title_height))
+    grid.ax_cbar.set_position((0.035, 0.82 - title_height, 0.015, 0.12))  # far enough right for the "z-score" title
+
     if legend_handles:
-        # Below the heatmap, one column per covariate, so the figure keeps its width
+        # Below the heatmap, one column per covariate
         grid.figure.legend(
-            handles=legend_handles, loc='upper center', bbox_to_anchor=(0.5, 0.0), ncol=len(clinical_covariates),
+            handles=legend_handles, loc='lower center', bbox_to_anchor=(0.5, 0.0), ncol=len(clinical_covariates),
             fontsize=5, frameon=False, handlelength=1.0, columnspacing=1.0,
         )
 
     selection_label = f'adj. p < {significance_threshold}' if selection == 'significant' else f'top {len(z_scores)} by p-value'
-    grid.figure.suptitle(f'{statistical_test}: communication scores, {selection_label}, {condition} donors only', fontsize=7, y=1.0, va='bottom')
+    grid.figure.suptitle(f'{statistical_test}: communication scores, {selection_label}, {condition} donors only', fontsize=7, y=0.995, va='top')
 
-    # Crop to the content vertically only, so the saved figure is exactly width_in_cm wide (unless something sticks out)
-    tight = grid.figure.get_tightbbox(grid.figure.canvas.get_renderer())
-    save_bbox = Bbox.from_extents(min(0.0, tight.x0), tight.y0 - 0.05, max(grid.figure.get_figwidth(), tight.x1), tight.y1 + 0.05)
-    grid.savefig(path_to_clustermap_png, dpi=300, bbox_inches=save_bbox)
-    grid.savefig(path_to_clustermap_pdf, dpi=300, bbox_inches=save_bbox)
+    grid.figure.savefig(path_to_clustermap_png, dpi=300)  # not grid.savefig, which defaults to bbox_inches="tight"
+    grid.figure.savefig(path_to_clustermap_pdf, dpi=300)
     plt.close(grid.figure)
 
 

@@ -84,6 +84,12 @@ parser.add_argument(
     type=float,
     default=10.0,
 )
+parser.add_argument(
+    '--summary_heatmap_height_in_cm',
+    type=float,
+    default=10.0,
+    help='With the 10 cm defaults the summary heatmap matches the AD-only clustermap of i_plot_mnc_coarse_score_clustermap.py.'
+)
 args = parser.parse_args()
 
 path_to_output_dir: str = args.path_to_output_dir
@@ -343,12 +349,12 @@ def plot_summary_heatmap(summary: pd.DataFrame):
     effect, p = effect.loc[row_order, column_order], p.loc[row_order, column_order]
 
     limit = max(0.3, float(np.nanmax(np.abs(effect.to_numpy()))))
-    fig, ax = plt.subplots(1, 1, figsize=(args.summary_heatmap_width_in_cm * cm, (2.5 + 0.7 * len(row_order)) * cm))
+    fig, ax = plt.subplots(1, 1, figsize=(args.summary_heatmap_width_in_cm * cm, args.summary_heatmap_height_in_cm * cm))
     image = ax.imshow(effect.to_numpy(dtype=float), cmap='RdBu_r', vmin=-limit, vmax=limit, aspect='auto')
     for i in range(len(row_order)):
         for j in range(len(column_order)):
             value = p.iat[i, j]
-            ax.text(j, i, format_p_value(value), ha='center', va='center', fontsize=5, fontweight='bold' if value < 0.05 else 'normal')
+            ax.text(j, i, format_p_value(value), ha='center', va='center', fontsize=4.5, fontweight='bold' if value < 0.05 else 'normal')
     ax.set_xticks(range(len(column_order)))
     ax.set_xticklabels(column_order, fontsize=6, rotation=90)
     ax.set_yticks(range(len(row_order)))
