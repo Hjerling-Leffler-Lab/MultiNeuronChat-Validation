@@ -26,6 +26,11 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
+    '--trim_mean_fraction',
+    type=str,
+    default='0',
+)
+parser.add_argument(
     '--path_to_ranking_table_excel',
     type=str,
     required=True,
@@ -44,6 +49,7 @@ args = parser.parse_args()
 
 path_to_summary_pkls: str = args.path_to_summary_pkls
 mean_type: str = args.mean_type
+trim_mean_fraction: str = args.trim_mean_fraction
 path_to_ranking_table_excel: str = args.path_to_ranking_table_excel
 n_donors: int = args.n_donors
 alpha: float = args.alpha
@@ -57,7 +63,7 @@ PAIRS: list[tuple[str, str]] = [('KS', 'CVM'), ('KS', 'MannWhitneyU'), ('CVM', '
 # Layout of the original hand-made workbook: one block per Log2 FC case, 10 rows apart, starting at row 2.
 BLOCK_START_ROWS: list[int] = [2, 12, 22, 32]
 COLUMN_WIDTHS: dict[str, float] = {
-    'B': 11.14, 'C': 2.71, 'E': 5.29, 'F': 5.71, 'G': 9.0, 'H': 10.0, 'I': 5.0, 'K': 7.29, 'L': 5.0,
+    'B': 11.14, 'C': 2.71, 'E': 5.29, 'F': 5.71, 'G': 5.0, 'I': 7.29, 'J': 5.0,
     'O': 5.29, 'P': 12.0, 'R': 5.29, 'S': 12.0,
 }
 FONT: Font = Font(name='Aptos Narrow', size=11)
@@ -107,16 +113,16 @@ def set_cell(ws: Worksheet, coordinate: str, value, center: bool = False):
 
 def write_block(ws: Worksheet, start_row: int, log2_fc: str, outcomes: list[int]):
     """
-    One Log2 FC block: pairwise outcomes (B:C), score and rank per test (E:I), tests sorted by rank (K:L).
+    One Log2 FC block: pairwise outcomes (B:C), score and rank per test (E:G), tests sorted by rank (I:J).
 
-    For three tests the score (net wins) ranges from -2 to 2. Pos Score shifts it to 1..5 and Rank Score maps it
-    linearly onto 1 (score 2) .. 3 (score -2), the sort key for the Ranking column.
+    For three tests the score (net wins) ranges from -2 to 2. Rank 1 is the highest score; tied tests get the
+    average of the ranks they span (RANK.AVG), so the ranks in a block always sum to 6.
     """
-    ws.merge_cells(f'B{start_row}:L{start_row}')
+    ws.merge_cells(f'B{start_row}:J{start_row}')
     set_cell(ws, f'B{start_row}', log2_fc, center=True)
 
     header_row: int = start_row + 1
-    for column, header in zip('FGHIKL', ['Score', 'Pos Score', 'Rank Score', 'Rank', 'Ranking', 'Rank']):
+    for column, header in zip('FGIJ', ['Score', 'Rank', 'Ranking', 'Rank']):
         set_cell(ws, f'{column}{header_row}', header, center=True)
 
     first, second, third = start_row + 2, start_row + 3, start_row + 4
@@ -125,24 +131,19 @@ def write_block(ws: Worksheet, start_row: int, log2_fc: str, outcomes: list[int]
         set_cell(ws, f'B{row}', f'{SHORT_LABELS[a]} vs {SHORT_LABELS[b]}')
         set_cell(ws, f'C{row}', outcome)
 
-    # Rows of E:I in the order of STATISTICAL_TESTS: KS, CvM, MWU.
+    # Rows of E:G in the order of STATISTICAL_TESTS: KS, CvM, MWU.
     scores: list[str] = [
         f'=C{first}+C{second}',
         f'=(-C{first})+C{third}',
         f'=(-C{second})+(-C{third})',
     ]
-    test_rows: list[int] = [first, second, third]
-    for row, test, score in zip(test_rows, STATISTICAL_TESTS, scores):
-        other_rows: list[int] = [other_row for other_row in test_rows if other_row != row]
-
+    for row, test, score in zip([first, second, third], STATISTICAL_TESTS, scores):
         set_cell(ws, f'E{row}', SHORT_LABELS[test])
         set_cell(ws, f'F{row}', score)
-        set_cell(ws, f'G{row}', f'=F{row}+3')
-        set_cell(ws, f'H{row}', f'=ABS((F{row}-2)/4)*2 + 1')
-        set_cell(ws, f'I{row}', f'=1+(G{row}<G{other_rows[0]}) +(G{row}<G{other_rows[1]})')
+        set_cell(ws, f'G{row}', f'=_xlfn.RANK.AVG(F{row},F${first}:F${third},0)')
 
-    ws[f'K{first}'] = ArrayFormula(f'K{first}:K{third}', f'=_xlfn.SORTBY(E{first}:E{third},H{first}:H{third})')
-    ws[f'L{first}'] = ArrayFormula(f'L{first}:L{third}', f'=_xlfn.SORTBY(I{first}:I{third},H{first}:H{third})')
+    ws[f'I{first}'] = ArrayFormula(f'I{first}:I{third}', f'=_xlfn.SORTBY(E{first}:E{third},G{first}:G{third})')
+    ws[f'J{first}'] = ArrayFormula(f'J{first}:J{third}', f'=_xlfn.SORTBY(G{first}:G{third},G{first}:G{third})')
 
 
 def write_mean_rank_summary(ws: Worksheet, title_row: int, title: str, mean_rank_formulas: list[str],
@@ -176,7 +177,7 @@ def main():
 
     for proportion in PROPORTIONS:
         for case in CASES:
-            path_to_pkl: str = os.path.join(path_to_summary_pkls, f'{mean_type}_{case}_{proportion}.pkl')
+            path_to_pkl: str = os.path.join(path_to_summary_pkls, f'{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl')
 
             if not os.path.exists(path_to_pkl):
                 raise FileNotFoundError(f"File not found: {path_to_pkl}")
@@ -217,13 +218,13 @@ def main():
         for start_row, case in zip(BLOCK_START_ROWS, CASES):
             write_block(ws, start_row, case.split('_')[-1], outcomes[(proportion, case)])
 
-        # Mean rank of each test over the Log2 FC blocks (Rank column I, test rows 2..4 below each block start).
+        # Mean rank of each test over the Log2 FC blocks (Rank column G, test rows 2..4 below each block start).
         write_mean_rank_summary(
             ws,
             title_row=3,
             title=f'Proportion {proportion}',
             mean_rank_formulas=[
-                '=AVERAGE(' + ','.join(f'I{start_row + 2 + index}' for start_row in BLOCK_START_ROWS) + ')'
+                '=AVERAGE(' + ','.join(f'G{start_row + 2 + index}' for start_row in BLOCK_START_ROWS) + ')'
                 for index in range(len(STATISTICAL_TESTS))
             ],
             with_mean_rank_header=True,
