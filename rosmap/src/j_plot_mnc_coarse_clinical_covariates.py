@@ -13,7 +13,8 @@ Outputs, under --path_to_output_dir (every plot as png and pdf):
     clinical_covariates_stats.csv                                   numbers behind the heatmap (effect, nominal p, n,
                                                                     plus BH over the whole heatmap)
     {png,pdf}/clinical_covariates/summary_heatmap                   all significant tetrads x covariates: Spearman rho
-                                                                    (sex: rank-biserial r), nominal p as text
+                                                                    (sex: rank-biserial r), BH-adjusted p (over the
+                                                                    whole heatmap) as text
     {png,pdf}/clinical_covariates/covariate_plots/<tetrad>/
         mmse_vs_score     MMSE (last visit) vs score, Spearman for AD and all donors
         braak_vs_score    Braak stage vs score (box plot), Spearman for AD and all donors
@@ -343,7 +344,7 @@ def summary_stats(tetrad_dfs: dict[str, pd.DataFrame], nci: str, ad: str) -> pd.
 
 def plot_summary_heatmap(summary: pd.DataFrame):
     effect = summary.pivot(index='tetrad', columns='column', values='effect')
-    p = summary.pivot(index='tetrad', columns='column', values='p')
+    p = summary.pivot(index='tetrad', columns='column', values='p_adj_bh_over_heatmap')
     row_order = list(dict.fromkeys(summary['tetrad']))
     column_order = list(dict.fromkeys(summary['column']))
     effect, p = effect.loc[row_order, column_order], p.loc[row_order, column_order]
@@ -363,7 +364,7 @@ def plot_summary_heatmap(summary: pd.DataFrame):
     colorbar = fig.colorbar(image, ax=ax, fraction=0.04, pad=0.02)
     colorbar.set_label('Spearman ρ (sex: rank-biserial r)', fontsize=6)
     colorbar.ax.tick_params(labelsize=5)
-    ax.set_title('Nominal p in cells (bold: p < 0.05)', fontsize=6)
+    ax.set_title('BH-adjusted p in cells (bold: p < 0.05)', fontsize=6)
     save_panel(fig, 'summary_heatmap', plot_dir)
 
 
