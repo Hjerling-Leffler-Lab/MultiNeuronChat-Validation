@@ -1,55 +1,49 @@
-container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.9.5.dev0"
+# Bianca cannot pull docker:// images: pass the local .sif there with --config container=/proj/.../<name>.sif
+container: config.get("container", "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.9.5.dev0")
 
+# Frozen for revision 1: coarse annotation (grouping.by), CVM, BH-adjusted p < 0.05, no prefilter
 statistical_tests = ["CVM"]
 
 # BH-adjusted p-value thresholds per test for the plots, independent of the MNC run above;
-# each threshold gets its own figure set under results/figs/{resolution}/{test}/padj_{threshold}/
+# each threshold gets its own figure set under results/figs/coarse/{test}/padj_{threshold}/
 plot_thresholds = {"CVM": [0.05]}
 plot_test_dirs = [f"{test}/padj_{threshold}" for test, thresholds in plot_thresholds.items() for threshold in thresholds]
+plot_tests = [test for test, thresholds in plot_thresholds.items() for _ in thresholds]
+plot_threshold_values = [threshold for thresholds in plot_thresholds.values() for threshold in thresholds]
 
-# Both annotations come out of the same MNC run (run_rosmap_coarse); coarse = grouping.by, fine = cell.type
-resolutions = ["coarse"]
-mnc_object_per_resolution = {
-    "coarse": "results/coarse/mnc_grouping_by.pkl",
-    "fine": "results/coarse/mnc_cell_type.pkl",
-}
-cell_type_label_column_per_resolution = {"coarse": "grouping.by", "fine": "cell.type"}
+mnc_object = "results/coarse/mnc_grouping_by.pkl"
+clinical_data = "data/raw/ROSMAP_clinical.csv"
+fig_dir = "results/figs/coarse/{test}/padj_{threshold}"
 
-# Figure sizes (cm) that differ between the 7 coarse and ~23 fine cell types
-circle_plot_size_per_resolution = {"coarse": 7, "fine": 12}
-circle_plot_legend_height_per_resolution = {"coarse": 3, "fine": 8}
-heatmap_size_per_resolution = {"coarse": (8, 7), "fine": (18, 16)}
+# Tetrad selection for the AD-only donor x tetrad communication-score clustermap (Fig. 3N)
+clustermap_selections = ["significant"]
 
-# Tetrad selections for the donor x tetrad communication-score clustermaps
-clustermap_selections = ["significant", "top_10", "top_20"]
+wildcard_constraints:
+    threshold=r"[0-9.]+",
 
 rule run_all:
     input:
-        # Generate MNC results for the coarse and fine annotation
-        "results/coarse/mnc_cell_type.pkl",
-        "results/coarse/mnc_grouping_by.pkl",
+        mnc_object,
+        "results/coarse/timings.pkl",
 
-        # Add final plots for the coarse and fine analysis
-        expand("results/figs/{resolution}/{test_dir}/{ext}/p_value_circle_plot.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/p_value_legend.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/p_value_arrow_legend.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-
+# Fig. 3A circle plot, 3B-I boxplots, 3J-M ligand/target decomposition, 3N AD-only clustermap, 3O clinical covariate
+# heatmap, Supp. Fig. 6A-H sex-stratified boxplots, and the Excel summary table
 rule plot_all:
     input:
         "results/figs/clinical_data_plot.pdf",
 
-        expand("results/figs/{resolution}/{test_dir}/{ext}/p_value_circle_plot.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/p_value_legend.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/p_value_arrow_legend.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/p_value_circle_plot.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/p_value_legend.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/p_value_arrow_legend.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
 
-        expand("results/figs/{resolution}/{test_dir}/{ext}/significant_boxplots.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/ligand_target_decomposition.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/single_panels/ligand_target_decomposition",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/significant_ecdfs.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/significance_heatmap.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/significant_vs_severity.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/significant_vs_confounders.{ext}",resolution=resolutions,test_dir=plot_test_dirs,ext=["png", "pdf"]),
-        expand("results/figs/{resolution}/{test_dir}/{ext}/score_clustermap_AD_only_{selection}.{ext}",resolution=resolutions,test_dir=plot_test_dirs,selection=clustermap_selections,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/significant_boxplots.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/ligand_target_decomposition.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/single_panels/ligand_target_decomposition",test_dir=plot_test_dirs,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/score_clustermap_AD_only_{selection}.{ext}",test_dir=plot_test_dirs,selection=clustermap_selections,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/clinical_covariates/summary_heatmap.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/sex_stratified_boxplots.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
+
+        expand("results/tables/T5_ROSMAP_summary_{test}_padj_{threshold}.xlsx",zip,test=plot_tests,threshold=plot_threshold_values),
 
 
 rule join_rosmap_data:
@@ -57,7 +51,7 @@ rule join_rosmap_data:
         path_to_script="src/1_join_rosmap_data.py",
 
         path_to_cell_annotations="data/raw/cell-annotation.n437.csv",
-        path_to_clinical_data="data/raw/ROSMAP_clinical.csv",
+        path_to_clinical_data=clinical_data,
         path_to_matrices="data/raw/count_matrices",
     output:
         path_to_output_loom="data/raw/joined_matrix.loom",
@@ -146,14 +140,14 @@ rule run_rosmap_coarse:
 
         path_to_subject_wise_normalized_loom="data/processed/coarse/joined_matrix_subsampled_refined_annotation.subject_wise_normalized.loom",
     output:
-        path_to_mnc_cell_type="results/coarse/mnc_cell_type.pkl",
-        path_to_mnc_grouping_by="results/coarse/mnc_grouping_by.pkl",
+        path_to_mnc_grouping_by=mnc_object,
         path_to_timings="results/coarse/timings.pkl",
     params:
         chunk_size_to_use=4096,
         n_processes_to_use=8,
         min_n_cells_threshold_to_use=10,
         significance_tests=" ".join(statistical_tests),
+    threads: 8
     resources:
         slurm_partition="cpu",
         runtime=2880,# 48 hours
@@ -162,7 +156,6 @@ rule run_rosmap_coarse:
         """
         python {input.path_to_script} \
             --path_to_subject_wise_normalized_loom {input.path_to_subject_wise_normalized_loom} \
-            --path_to_mnc_cell_type {output.path_to_mnc_cell_type} \
             --path_to_mnc_grouping_by {output.path_to_mnc_grouping_by} \
             --path_to_timings {output.path_to_timings} \
             --chunk_size_to_use {params.chunk_size_to_use} \
@@ -175,7 +168,7 @@ rule plot_clinical_data:
     input:
         path_to_script="src/a_plot_clinical_data.py",
 
-        path_to_clinical_data="data/raw/ROSMAP_clinical.csv",
+        path_to_clinical_data=clinical_data,
         path_to_437_cell_type_annotations="data/raw/cell-annotation.n437.csv",
     output:
         path_to_output_figure="results/figs/clinical_data_plot.pdf",
@@ -184,7 +177,7 @@ rule plot_clinical_data:
         height_in_cm=5,
     resources:
         slurm_partition="cpu",
-        runtime=5,# 30 minutes
+        runtime=5,# 5 minutes
         mem_mb=4_000,# 4 GB
     shell:
         """
@@ -200,26 +193,20 @@ rule plot_p_value_circle_plots:
     input:
         path_to_script="src/b_plot_mnc_coarse_p_value_circle_plot.py",
 
-        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution]
+        path_to_mnc_object=mnc_object,
     output:
-        path_to_p_value_circle_plot_png="results/figs/{resolution}/{test}/padj_{threshold}/png/p_value_circle_plot.png",
-        path_to_p_value_legend_png="results/figs/{resolution}/{test}/padj_{threshold}/png/p_value_legend.png",
-        path_to_p_value_arrow_legend_png="results/figs/{resolution}/{test}/padj_{threshold}/png/p_value_arrow_legend.png",
-        path_to_p_value_circle_plot_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/p_value_circle_plot.pdf",
-        path_to_p_value_legend_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/p_value_legend.pdf",
-        path_to_p_value_arrow_legend_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/p_value_arrow_legend.pdf",
-    wildcard_constraints:
-        resolution="|".join(resolutions),
-        threshold=r"[0-9.]+",
+        path_to_p_value_circle_plot_png=f"{fig_dir}/png/p_value_circle_plot.png",
+        path_to_p_value_legend_png=f"{fig_dir}/png/p_value_legend.png",
+        path_to_p_value_arrow_legend_png=f"{fig_dir}/png/p_value_arrow_legend.png",
+        path_to_p_value_circle_plot_pdf=f"{fig_dir}/pdf/p_value_circle_plot.pdf",
+        path_to_p_value_legend_pdf=f"{fig_dir}/pdf/p_value_legend.pdf",
+        path_to_p_value_arrow_legend_pdf=f"{fig_dir}/pdf/p_value_arrow_legend.pdf",
     params:
-        statistical_test="{test}",
-        significance_threshold="{threshold}",
-
-        width_in_cm_main=lambda wildcards: circle_plot_size_per_resolution[wildcards.resolution],
-        height_in_cm_main=lambda wildcards: circle_plot_size_per_resolution[wildcards.resolution],
+        width_in_cm_main=7,
+        height_in_cm_main=7,
 
         width_in_cm_legend_cell_type=7,
-        height_in_cm_legend_cell_type=lambda wildcards: circle_plot_legend_height_per_resolution[wildcards.resolution],
+        height_in_cm_legend_cell_type=3,
 
         width_in_cm_legend_arrow=3,
         height_in_cm_legend_arrow=1.5,
@@ -237,8 +224,8 @@ rule plot_p_value_circle_plots:
             --path_to_p_value_circle_plot_pdf {output.path_to_p_value_circle_plot_pdf} \
             --path_to_p_value_legend_pdf {output.path_to_p_value_legend_pdf} \
             --path_to_p_value_arrow_legend_pdf {output.path_to_p_value_arrow_legend_pdf} \
-            --statistical_test {params.statistical_test} \
-            --significance_threshold {params.significance_threshold} \
+            --statistical_test {wildcards.test} \
+            --significance_threshold {wildcards.threshold} \
             --width_in_cm_main {params.width_in_cm_main} \
             --height_in_cm_main {params.height_in_cm_main} \
             --width_in_cm_legend_cell_type {params.width_in_cm_legend_cell_type} \
@@ -251,17 +238,11 @@ rule plot_significant_boxplots:
     input:
         path_to_script="src/d_plot_mnc_coarse_significant_boxplots.py",
 
-        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution]
+        path_to_mnc_object=mnc_object,
     output:
-        path_to_boxplots_png="results/figs/{resolution}/{test}/padj_{threshold}/png/significant_boxplots.png",
-        path_to_boxplots_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/significant_boxplots.pdf",
-        path_to_significant_tetrads_csv="results/figs/{resolution}/{test}/padj_{threshold}/significant_tetrads.csv",
-    wildcard_constraints:
-        resolution="|".join(resolutions),
-        threshold=r"[0-9.]+",
-    params:
-        statistical_test="{test}",
-        significance_threshold="{threshold}",
+        path_to_boxplots_png=f"{fig_dir}/png/significant_boxplots.png",
+        path_to_boxplots_pdf=f"{fig_dir}/pdf/significant_boxplots.pdf",
+        path_to_significant_tetrads_csv=f"{fig_dir}/significant_tetrads.csv",
     resources:
         slurm_partition="cpu",
         runtime=5,# 5 minutes
@@ -273,27 +254,21 @@ rule plot_significant_boxplots:
             --path_to_boxplots_png {output.path_to_boxplots_png} \
             --path_to_boxplots_pdf {output.path_to_boxplots_pdf} \
             --path_to_significant_tetrads_csv {output.path_to_significant_tetrads_csv} \
-            --statistical_test {params.statistical_test} \
-            --significance_threshold {params.significance_threshold}
+            --statistical_test {wildcards.test} \
+            --significance_threshold {wildcards.threshold}
         """
 
 rule plot_ligand_target_decomposition:
     input:
         path_to_script="src/e_plot_mnc_coarse_ligand_target_decomposition.py",
 
-        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
+        path_to_mnc_object=mnc_object,
     output:
-        path_to_decomposition_png="results/figs/{resolution}/{test}/padj_{threshold}/png/ligand_target_decomposition.png",
-        path_to_decomposition_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/ligand_target_decomposition.pdf",
-        path_to_single_panel_dir_png=directory("results/figs/{resolution}/{test}/padj_{threshold}/png/single_panels/ligand_target_decomposition"),
-        path_to_single_panel_dir_pdf=directory("results/figs/{resolution}/{test}/padj_{threshold}/pdf/single_panels/ligand_target_decomposition"),
-        path_to_ligand_target_tests_csv="results/figs/{resolution}/{test}/padj_{threshold}/ligand_target_tests.csv",
-    wildcard_constraints:
-        resolution="|".join(resolutions),
-        threshold=r"[0-9.]+",
-    params:
-        statistical_test="{test}",
-        significance_threshold="{threshold}",
+        path_to_decomposition_png=f"{fig_dir}/png/ligand_target_decomposition.png",
+        path_to_decomposition_pdf=f"{fig_dir}/pdf/ligand_target_decomposition.pdf",
+        path_to_single_panel_dir_png=directory(f"{fig_dir}/png/single_panels/ligand_target_decomposition"),
+        path_to_single_panel_dir_pdf=directory(f"{fig_dir}/pdf/single_panels/ligand_target_decomposition"),
+        path_to_ligand_target_tests_csv=f"{fig_dir}/ligand_target_tests.csv",
     resources:
         slurm_partition="cpu",
         runtime=5,# 5 minutes
@@ -307,124 +282,22 @@ rule plot_ligand_target_decomposition:
             --path_to_single_panel_dir_png {output.path_to_single_panel_dir_png} \
             --path_to_single_panel_dir_pdf {output.path_to_single_panel_dir_pdf} \
             --path_to_ligand_target_tests_csv {output.path_to_ligand_target_tests_csv} \
-            --statistical_test {params.statistical_test} \
-            --significance_threshold {params.significance_threshold}
-        """
-
-rule plot_significant_ecdfs:
-    input:
-        path_to_script="src/f_plot_mnc_coarse_significant_ecdfs.py",
-
-        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
-    output:
-        path_to_ecdfs_png="results/figs/{resolution}/{test}/padj_{threshold}/png/significant_ecdfs.png",
-        path_to_ecdfs_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/significant_ecdfs.pdf",
-    wildcard_constraints:
-        resolution="|".join(resolutions),
-        threshold=r"[0-9.]+",
-    params:
-        statistical_test="{test}",
-        significance_threshold="{threshold}",
-    resources:
-        slurm_partition="cpu",
-        runtime=5,# 5 minutes
-        mem_mb=4_000,# 4 GB
-    shell:
-        """
-        python {input.path_to_script} \
-            --path_to_mnc_object {input.path_to_mnc_object} \
-            --path_to_ecdfs_png {output.path_to_ecdfs_png} \
-            --path_to_ecdfs_pdf {output.path_to_ecdfs_pdf} \
-            --statistical_test {params.statistical_test} \
-            --significance_threshold {params.significance_threshold}
-        """
-
-rule plot_significance_heatmap:
-    input:
-        path_to_script="src/g_plot_mnc_coarse_significance_heatmap.py",
-
-        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
-    output:
-        path_to_heatmap_png="results/figs/{resolution}/{test}/padj_{threshold}/png/significance_heatmap.png",
-        path_to_heatmap_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/significance_heatmap.pdf",
-    wildcard_constraints:
-        resolution="|".join(resolutions),
-        threshold=r"[0-9.]+",
-    params:
-        statistical_test="{test}",
-        significance_threshold="{threshold}",
-        width_in_cm=lambda wildcards: heatmap_size_per_resolution[wildcards.resolution][0],
-        height_in_cm=lambda wildcards: heatmap_size_per_resolution[wildcards.resolution][1],
-    resources:
-        slurm_partition="cpu",
-        runtime=5,# 5 minutes
-        mem_mb=4_000,# 4 GB
-    shell:
-        """
-        python {input.path_to_script} \
-            --path_to_mnc_object {input.path_to_mnc_object} \
-            --path_to_heatmap_png {output.path_to_heatmap_png} \
-            --path_to_heatmap_pdf {output.path_to_heatmap_pdf} \
-            --statistical_test {params.statistical_test} \
-            --significance_threshold {params.significance_threshold} \
-            --width_in_cm {params.width_in_cm} \
-            --height_in_cm {params.height_in_cm}
-        """
-
-rule plot_significant_vs_clinical:
-    input:
-        path_to_script="src/h_plot_mnc_coarse_significant_vs_clinical.py",
-
-        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
-        path_to_clinical_data="data/raw/ROSMAP_clinical.csv",
-        path_to_subject_wise_normalized_loom="data/processed/coarse/joined_matrix_subsampled_refined_annotation.subject_wise_normalized.loom",
-    output:
-        path_to_severity_png="results/figs/{resolution}/{test}/padj_{threshold}/png/significant_vs_severity.png",
-        path_to_severity_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/significant_vs_severity.pdf",
-        path_to_confounders_png="results/figs/{resolution}/{test}/padj_{threshold}/png/significant_vs_confounders.png",
-        path_to_confounders_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/significant_vs_confounders.pdf",
-    wildcard_constraints:
-        resolution="|".join(resolutions),
-        threshold=r"[0-9.]+",
-    params:
-        statistical_test="{test}",
-        significance_threshold="{threshold}",
-        cell_type_label_column=lambda wildcards: cell_type_label_column_per_resolution[wildcards.resolution],
-    resources:
-        slurm_partition="cpu",
-        runtime=5,# 5 minutes
-        mem_mb=4_000,# 4 GB
-    shell:
-        """
-        python {input.path_to_script} \
-            --path_to_mnc_object {input.path_to_mnc_object} \
-            --path_to_clinical_data {input.path_to_clinical_data} \
-            --path_to_subject_wise_normalized_loom {input.path_to_subject_wise_normalized_loom} \
-            --path_to_severity_png {output.path_to_severity_png} \
-            --path_to_severity_pdf {output.path_to_severity_pdf} \
-            --path_to_confounders_png {output.path_to_confounders_png} \
-            --path_to_confounders_pdf {output.path_to_confounders_pdf} \
-            --statistical_test {params.statistical_test} \
-            --significance_threshold {params.significance_threshold} \
-            --cell_type_label_column {params.cell_type_label_column}
+            --statistical_test {wildcards.test} \
+            --significance_threshold {wildcards.threshold}
         """
 
 rule plot_score_clustermap_AD_only:
     input:
         path_to_script="src/i_plot_mnc_coarse_score_clustermap.py",
 
-        path_to_mnc_object=lambda wildcards: mnc_object_per_resolution[wildcards.resolution],
+        path_to_mnc_object=mnc_object,
     output:
-        path_to_clustermap_png="results/figs/{resolution}/{test}/padj_{threshold}/png/score_clustermap_AD_only_{selection}.png",
-        path_to_clustermap_pdf="results/figs/{resolution}/{test}/padj_{threshold}/pdf/score_clustermap_AD_only_{selection}.pdf",
-        path_to_donor_order_csv="results/figs/{resolution}/{test}/padj_{threshold}/score_clustermap_AD_only_donor_order_{selection}.csv",
+        path_to_clustermap_png=f"{fig_dir}/png/score_clustermap_AD_only_{{selection}}.png",
+        path_to_clustermap_pdf=f"{fig_dir}/pdf/score_clustermap_AD_only_{{selection}}.pdf",
+        # Donor IDs in dendrogram order: individual-level, stays on Bianca
+        path_to_donor_order_csv=f"{fig_dir}/score_clustermap_AD_only_donor_order_{{selection}}.csv",
     wildcard_constraints:
-        resolution="|".join(resolutions),
-        threshold=r"[0-9.]+",
         selection="|".join(clustermap_selections),
-    params:
-        statistical_test="{test}",
-        significance_threshold="{threshold}",
     resources:
         slurm_partition="cpu",
         runtime=5,# 5 minutes
@@ -436,8 +309,91 @@ rule plot_score_clustermap_AD_only:
             --path_to_clustermap_png {output.path_to_clustermap_png} \
             --path_to_clustermap_pdf {output.path_to_clustermap_pdf} \
             --path_to_donor_order_csv {output.path_to_donor_order_csv} \
-            --statistical_test {params.statistical_test} \
+            --statistical_test {wildcards.test} \
             --selection {wildcards.selection} \
-            --significance_threshold {params.significance_threshold} \
+            --significance_threshold {wildcards.threshold} \
             --condition AD
+        """
+
+rule plot_clinical_covariates:
+    input:
+        path_to_script="src/j_plot_mnc_coarse_clinical_covariates.py",
+
+        path_to_mnc_object=mnc_object,
+        path_to_clinical_data=clinical_data,
+    output:
+        path_to_stats_csv=f"{fig_dir}/clinical_covariates_stats.csv",
+        path_to_summary_heatmap_png=f"{fig_dir}/png/clinical_covariates/summary_heatmap.png",
+        path_to_summary_heatmap_pdf=f"{fig_dir}/pdf/clinical_covariates/summary_heatmap.pdf",
+        # Per-donor scatter/box plots per tetrad: individual-level, stay on Bianca
+        path_to_covariate_plots_png=directory(f"{fig_dir}/png/clinical_covariates/covariate_plots"),
+        path_to_covariate_plots_pdf=directory(f"{fig_dir}/pdf/clinical_covariates/covariate_plots"),
+    params:
+        path_to_output_dir=fig_dir,
+    resources:
+        slurm_partition="cpu",
+        runtime=15,# 15 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_clinical_data {input.path_to_clinical_data} \
+            --path_to_output_dir {params.path_to_output_dir} \
+            --statistical_test {wildcards.test} \
+            --significance_threshold {wildcards.threshold}
+        """
+
+rule plot_sex_stratified_boxplots:
+    input:
+        path_to_script="src/k_plot_mnc_coarse_sex_stratified_boxplots.py",
+
+        path_to_mnc_object=mnc_object,
+        path_to_clinical_data=clinical_data,
+    output:
+        path_to_tests_csv=f"{fig_dir}/sex_stratified_tests.csv",
+        path_to_sex_by_condition_csv=f"{fig_dir}/sex_by_condition.csv",
+        path_to_boxplots_png=f"{fig_dir}/png/sex_stratified_boxplots.png",
+        path_to_boxplots_pdf=f"{fig_dir}/pdf/sex_stratified_boxplots.pdf",
+        path_to_single_panel_dir_png=directory(f"{fig_dir}/png/single_panels/sex_stratified_boxplots"),
+        path_to_single_panel_dir_pdf=directory(f"{fig_dir}/pdf/single_panels/sex_stratified_boxplots"),
+    params:
+        path_to_output_dir=fig_dir,
+        n_permutations=50_000,
+    resources:
+        slurm_partition="cpu",
+        runtime=60,# 1 hour (the permutations take ~12 minutes)
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_clinical_data {input.path_to_clinical_data} \
+            --path_to_output_dir {params.path_to_output_dir} \
+            --statistical_test {wildcards.test} \
+            --significance_threshold {wildcards.threshold} \
+            --n_permutations {params.n_permutations} \
+            --recompute
+        """
+
+rule create_rosmap_summary_table:
+    input:
+        path_to_script="src/tables/create_rosmap_summary_table.py",
+
+        path_to_mnc_object=mnc_object,
+        path_to_ligand_target_tests_csv=f"{fig_dir}/ligand_target_tests.csv",
+    output:
+        path_to_table_excel="results/tables/T5_ROSMAP_summary_{test}_padj_{threshold}.xlsx",
+    resources:
+        slurm_partition="cpu",
+        runtime=10,# 10 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_ligand_target_tests_csv {input.path_to_ligand_target_tests_csv} \
+            --path_to_table_excel {output.path_to_table_excel} \
+            --statistical_test {wildcards.test} \
+            --significance_threshold {wildcards.threshold}
         """
