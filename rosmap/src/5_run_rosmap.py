@@ -16,11 +16,6 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
-    '--path_to_mnc_cell_type',
-    type=str,
-    required=True,
-)
-parser.add_argument(
     '--path_to_mnc_grouping_by',
     type=str,
     required=True,
@@ -49,7 +44,7 @@ parser.add_argument(
     '--significance_tests',
     type=str,
     nargs='+',
-    default=['KS'],
+    default=['CVM'],
     help='List of significance tests to use. Options: KS, CVM, MannWhitneyU'
 )
 args = parser.parse_args()
@@ -57,7 +52,6 @@ args = parser.parse_args()
 # Paths to the input files and output folder
 path_to_subject_wise_normalized_loom: str = args.path_to_subject_wise_normalized_loom
 
-path_to_mnc_cell_type: str = args.path_to_mnc_cell_type
 path_to_mnc_grouping_by: str = args.path_to_mnc_grouping_by
 path_to_timings: str = args.path_to_timings
 
@@ -119,7 +113,6 @@ def main():
 
     # Create output folder if it does not exist
     all_output_paths = [
-        path_to_mnc_cell_type,
         path_to_mnc_grouping_by,
         path_to_timings
     ]
@@ -128,9 +121,8 @@ def main():
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-    # Save the timings in a dictionary and pickle it
+    # Only the coarse annotation (grouping.by) is analysed; save its timings in a dictionary and pickle it
     time_dict: dict[str, dict[str, tuple[float, float]]] = {
-        'cell_type': run_mnc('cell.type', path_to_mnc_cell_type),
         'grouping_by': run_mnc('grouping.by', path_to_mnc_grouping_by),
     }
     with open(path_to_timings, 'wb') as f:
