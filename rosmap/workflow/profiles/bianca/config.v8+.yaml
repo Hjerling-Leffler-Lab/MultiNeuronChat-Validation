@@ -12,7 +12,7 @@ jobs: 20
 
 # Bianca cannot pull docker:// images: the Snakefile's container is replaced by the local .sif
 config:
-  - "container=/proj/sens2025558/MultiNeuronChat/containers/multi-neuron-chat-validation-pipeline_2026.9.5.dev0.sif"
+  - "container=/proj/sens2025558/MultiNeuronChat/validation/container/mnc-validation_2026.9.5.dev0.sif"
 software-deployment-method: apptainer
 apptainer-args: "--bind /proj/sens2025558"
 
