@@ -77,3 +77,8 @@ latency-wait: 60
 
 rerun-incomplete: true
 printshellcmds: true
+
+# Rerun only when inputs are newer than outputs. With the default triggers, the switch from the docker:// image to the
+# local .sif (software-env) and code-only edits would rerun the ~7 h normalization and the ~48 h MNC run
+rerun-triggers:
+  - mtime
