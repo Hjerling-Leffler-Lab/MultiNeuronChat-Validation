@@ -57,7 +57,7 @@ parser.add_argument(
 parser.add_argument(
     '--significance_threshold',
     type=float,
-    default=0.1,
+    default=0.05,
 )
 parser.add_argument(
     '--width_in_cm_per_panel',

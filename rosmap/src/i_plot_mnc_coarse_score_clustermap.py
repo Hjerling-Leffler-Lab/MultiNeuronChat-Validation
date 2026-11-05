@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from scipy import stats
 from scipy.cluster import hierarchy
 
 from multineuronchat import MultiNeuronChatObject
@@ -14,7 +13,7 @@ import seaborn as sns
 
 import argparse
 
-from plotting.utils import cell_type_to_short, save_no_significant_tetrads_figure
+from plotting.utils import cell_type_to_short, get_adjusted_p_values, save_no_significant_tetrads_figure
 
 parser = argparse.ArgumentParser(description='Hierarchically cluster the donors of one condition and the tetrads on their communication scores and plot them as a heatmap.')
 
@@ -37,6 +36,7 @@ parser.add_argument(
     '--path_to_donor_order_csv',
     type=str,
     required=True,
+    help='Donor IDs in dendrogram order; individual-level, so it stays on Bianca.'
 )
 parser.add_argument(
     '--statistical_test',
@@ -52,14 +52,7 @@ parser.add_argument(
 parser.add_argument(
     '--significance_threshold',
     type=float,
-    default=0.1,
-)
-parser.add_argument(
-    '--p_value_correction',
-    type=str,
-    default='bh',
-    choices=['bh', 'by', 'stored'],
-    help="Re-adjust the raw p-values over all tested tetrads ('bh'/'by'), or use the object's stored adjusted p ('stored')",
+    default=0.05,
 )
 parser.add_argument(
     '--condition',
@@ -88,7 +81,6 @@ path_to_donor_order_csv: str = args.path_to_donor_order_csv
 statistical_test: str = args.statistical_test
 selection: str = args.selection
 significance_threshold: float = args.significance_threshold
-p_value_correction: str = args.p_value_correction
 condition: str = args.condition
 
 width_in_cm: float = args.width_in_cm
@@ -99,24 +91,13 @@ cm: float = 1/2.54  # cm to inches conversion factor
 # z-scores beyond this are clipped in the colour scale only, not in the clustering
 z_score_limit: float = 3.0
 
-def get_adjusted_p_values(mnc_object: MultiNeuronChatObject) -> xr.DataArray:
-    """Adjusted p-values: re-adjusted from the raw p (same as j_plot_mnc_coarse_clinical_covariates.py) or the stored ones."""
-    if p_value_correction == 'stored':
-        return mnc_object.p_values_adj[statistical_test]
-    p_values = mnc_object.p_values[statistical_test]
-    tested = np.isfinite(p_values.values)
-    adjusted = np.full(p_values.shape, np.nan)
-    adjusted[tested] = stats.false_discovery_control(p_values.values[tested], method=p_value_correction)
-    return p_values.copy(data=adjusted)
-
-
 def select_tetrads(mnc_object: MultiNeuronChatObject) -> pd.DataFrame:
     """Return (source, receiver, interaction, p, p_adj) of the tetrads to show, sorted by raw p-value."""
     p_values = mnc_object.p_values[statistical_test].to_dataframe('p').dropna()
-    p_values_adj = get_adjusted_p_values(mnc_object).to_dataframe('p_adj').dropna()
+    p_values_adj = get_adjusted_p_values(mnc_object, statistical_test).to_dataframe('p_adj').dropna()
     tetrads = p_values.join(p_values_adj).sort_values(['p', 'p_adj']).reset_index()
     print(f'{(tetrads["p_adj"] < significance_threshold).sum()} of {len(tetrads)} tetrads with {statistical_test} '
-          f'{p_value_correction.upper()}-adjusted p < {significance_threshold}')
+          f'BH-adjusted p < {significance_threshold}')
 
     if selection == 'significant':
         return tetrads[tetrads['p_adj'] < significance_threshold]
@@ -205,7 +186,7 @@ def main():
     grid.figure.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0.0, 0.0, 1.0, 1.0 - title_height))
     grid.ax_cbar.set_position((0.035, 0.82 - title_height, 0.015, 0.12))  # far enough right for the "z-score" title
 
-    selection_label = f'{p_value_correction.upper()}-adj. p < {significance_threshold}' if selection == 'significant' else f'top {len(z_scores)} by p-value'
+    selection_label = f'BH-adj. p < {significance_threshold}' if selection == 'significant' else f'top {len(z_scores)} by p-value'
     grid.figure.suptitle(f'{statistical_test}: communication scores, {selection_label}, {condition} donors only', fontsize=7, y=0.995, va='top')
 
     grid.figure.savefig(path_to_clustermap_png, dpi=300)  # not grid.savefig, which defaults to bbox_inches="tight"
