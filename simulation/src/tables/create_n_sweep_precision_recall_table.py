@@ -10,35 +10,44 @@ parser.add_argument(
     help='Summaries of plotting/plot_n_sweep_precision_recall_a.py',
 )
 parser.add_argument(
+    '--paths_to_full_cohort_summary_dfs',
+    nargs='+',
+    required=True,
+    help='Summaries of plotting/plot_precision_recall_a.py at proportion 1.0, the largest cohort of the sweep',
+)
+parser.add_argument(
     '--path_to_table_excel',
     type=str,
     required=True,
 )
 args = parser.parse_args()
 
-filter_names: dict[str, str] = {
-    'None': 'No filter',
-    'Variance-top10': 'Variance (top 10%)',
-    'Variance-min0': 'Variance (> 0)',
-    'Abundance-top10': 'Abundance (top 10%)',
-    'Abundance-min0': 'Abundance (> 0)',
-}
-
 
 def main():
-    df: pd.DataFrame = pd.concat([pd.read_pickle(path) for path in args.paths_to_summary_dfs], ignore_index=True)
-    df['Log2 FC'] = df['Case'].str.split('_').str[-1]
-    df['Prefilter'] = df['Filter'].map(filter_names)
+    n_sweep_df: pd.DataFrame = pd.concat(
+        [pd.read_pickle(path) for path in args.paths_to_summary_dfs], ignore_index=True,
+    )
+    # The sweep sub-samples donors from the full simulated cohort, so the full cohort with all case donors affected
+    # (proportion 1.0) is its largest cohort.
+    full_cohort_df: pd.DataFrame = pd.concat(
+        [pd.read_pickle(path) for path in args.paths_to_full_cohort_summary_dfs], ignore_index=True,
+    )
+    full_cohort_df = full_cohort_df[full_cohort_df['Proportion'] == 1.0].drop(columns=['Proportion'])
 
-    group_columns: list[str] = ['Mean Type', 'Log2 FC', 'N Donors Per Group', 'Test', 'Prefilter']
+    df: pd.DataFrame = pd.concat([n_sweep_df, full_cohort_df], ignore_index=True)
+    df['Log2 FC'] = df['Case'].str.split('_').str[-1]
+
+    group_columns: list[str] = ['Mean Type', 'Log2 FC', 'N Donors Per Group', 'Test']
     grouped = df.groupby(group_columns, sort=True)
 
     summary: pd.DataFrame = grouped.agg(**{
         'Precision (mean)': ('Precision', 'mean'),
         'Precision (SD)': ('Precision', 'std'),
+        'Precision (median)': ('Precision', 'median'),
         'Datasets with calls': ('Precision', 'count'),
         'Recall (mean)': ('Recall', 'mean'),
         'Recall (SD)': ('Recall', 'std'),
+        'Recall (median)': ('Recall', 'median'),
         'Significant calls (mean)': ('N Significant', 'mean'),
         'Tested hypotheses m (mean)': ('N Hypotheses', 'mean'),
         'True tetrads tested (mean)': ('N Ground Truth Tested', 'mean'),

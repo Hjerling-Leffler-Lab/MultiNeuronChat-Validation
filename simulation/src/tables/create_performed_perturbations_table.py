@@ -8,7 +8,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--path_to_gene_perturbations_csv",
     type=str,
-    help="Path to the CSV file containing expected perturbations",
+    help="Path to the CSV file containing the performed gene perturbations",
+)
+parser.add_argument(
+    "--path_to_expected_perturbations_csv",
+    type=str,
+    help="Path to the CSV file containing the expected perturbed pathways (the ground truth)",
 )
 parser.add_argument(
     '--path_to_gene_perturbations_excel',
@@ -19,6 +24,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 path_to_gene_perturbations_csv = args.path_to_gene_perturbations_csv
+path_to_expected_perturbations_csv = args.path_to_expected_perturbations_csv
 path_to_gene_perturbations_excel = args.path_to_gene_perturbations_excel
 
 def main():
@@ -47,11 +53,14 @@ def main():
         False: "Down"
     })
 
-    # Save the DataFrame to excel
-    performed_gene_perturbations_df.to_excel(
-        path_to_gene_perturbations_excel,
-        index=False
-    )
+    # The ground truth: every source-receiver-ligand-target tetrad that contains a perturbed gene. The "Origin" column
+    # (original sampling vs. added at gene level) is internal bookkeeping and left out.
+    expected_perturbations_df = pd.read_csv(path_to_expected_perturbations_csv)
+    expected_perturbations_df = expected_perturbations_df[['Source', 'Receiver', 'Ligand', 'Target', 'Perturbed_Gene']]
+
+    with pd.ExcelWriter(path_to_gene_perturbations_excel) as writer:
+        performed_gene_perturbations_df.to_excel(writer, sheet_name='Gene Perturbations', index=False)
+        expected_perturbations_df.to_excel(writer, sheet_name='Expected Perturbations', index=False)
 
 
 if __name__ == '__main__':

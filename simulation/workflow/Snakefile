@@ -12,12 +12,12 @@ N_DATASETS = int(config.get("n_datasets", 10))
 N_DONORS_SWEEP = config.get("n_donors_sweep", [2, 3, 5, 8, 10, 20])
 N_SWEEP_CASES = config.get("n_sweep_cases", ["CASE_0.5", "CASE_1"])
 N_SWEEP_PROPORTION = config.get("n_sweep_proportion", 1.0)
-N_SWEEP_MEAN_TYPES = config.get("n_sweep_mean_types", ["mean", "tri_mean"])
+N_SWEEP_MEAN_TYPES = config.get("n_sweep_mean_types", ["tri_mean"])
 
 rule run_all:
     input:
         expand(
-            'results/neuron_chat/timing/{case}_{proportion}_{dataset_index}_comparison.csv',
+            'results/neuron_chat/timing/timing_comparison/{case}_{proportion}_{dataset_index}_comparison.csv',
             case=CASES,
             proportion=PROPORTIONS,
             dataset_index=range(0,N_DATASETS),
@@ -41,15 +41,6 @@ rule run_all:
 
 rule plot_all:
     input:
-        expand(
-            "results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/{filters}.pdf",
-            filters=["all_filters", "without_wasserstein", "wasserstein", "variance", "abundance"],
-            mean_type=["tri_mean"],
-            trim_mean_fraction=config["trim_mean_fractions"]["default"],
-            statistical_test=['KS', 'CVM', 'MannWhitneyU'],
-            case=CASES,
-        ),
-
         expand(
             'results/figs/pr_curves/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/summary.pdf',
             mean_type=["tri_mean", 'mean'],
@@ -141,14 +132,30 @@ rule plot_all:
             case=CASES,
         ),
 
+        # PR AUC per statistical test against the log2FC (Fig. 2D: trimean, proportion 1.0)
+        expand(
+            'results/figs/pr_auc_vs_l2fc/{mean_type}_{trim_mean_fraction}/{proportion}.pdf',
+            mean_type=['mean', 'tri_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            proportion=PROPORTIONS,
+        ),
+        expand(
+            'results/figs/pr_auc_vs_l2fc/{mean_type}_{trim_mean_fraction}/{proportion}.pdf',
+            mean_type=['trim_mean'],
+            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
+            proportion=PROPORTIONS,
+        ),
+
         # Timing figures
         'results/figs/timing_results/timings.pdf',
-        'results/figs/timing_results/timings_no_masks.pdf',
         'results/figs/timing_results/legend.pdf',
 
         # Timing summary CSV and XLSX
         path_to_timing_result_summary_csv='results/Timing_results/T3_MNC_Runtime.csv',
         path_to_timing_result_summary_xlsx='results/Timing_results/T3_MNC_Runtime.xlsx',
+
+        # NeuronChat runtime on the same datasets
+        path_to_neuronchat_timing_summary_xlsx='results/tables/T3_NeuronChat_Runtime.xlsx',
 
         # Table for performed perturbations
         path_to_gene_perturbations_excel="results/tables/T2_perturbations.xlsx",
@@ -162,48 +169,8 @@ rule plot_all:
         # Mean rank of the statistical tests from pairwise Wilcoxon comparisons of the trimean PR AUCs
         path_to_statistical_test_ranking_table_excel="results/tables/T4_statistical_test_ranking.xlsx",
 
-        path_to_ks_figure= expand(
-            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf",
-            mean_type=['mean', 'tri_mean'],
-            trim_mean_fraction=config['trim_mean_fractions']['default'],
-            case=CASES,
-            proportion=PROPORTIONS,
-        ),
-        path_to_cvm_figure= expand(
-            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf",
-            mean_type=['mean', 'tri_mean'],
-            trim_mean_fraction=config['trim_mean_fractions']['default'],
-            case=CASES,
-            proportion=PROPORTIONS,
-        ),
-        path_to_mwu_figure= expand(
-            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf",
-            mean_type=['mean', 'tri_mean'],
-            trim_mean_fraction=config['trim_mean_fractions']['default'],
-            case=CASES,
-            proportion=PROPORTIONS,
-        ),
-        path_to_ks_figure_trim_mean= expand(
-            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf",
-                mean_type=['trim_mean'],
-                trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
-                case=CASES,
-                proportion=PROPORTIONS,
-        ),
-        path_to_cvm_figure_trim_mean=expand(
-            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf",
-            mean_type=['trim_mean'],
-            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
-            case=CASES,
-            proportion=PROPORTIONS,
-        ),
-        path_to_mwu_figure_trim_mean=expand(
-            "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf",
-            mean_type=['trim_mean'],
-            trim_mean_fraction=config['trim_mean_fractions']['trim_mean'],
-            case=CASES,
-            proportion=PROPORTIONS,
-        ),
+        # All in-silico result tables combined into one workbook (Supplementary Table T4)
+        path_to_simulation_summary_table_excel="results/tables/T4_Simulation_Summary.xlsx",
 
         # path_to_legend_simulated="results/figs/umap/simulated/legend.pdf",
         # path_to_umap_cell_type_annotated_simulated="results/figs/umap/simulated/umap_cell_type_annotated.png",
@@ -226,10 +193,6 @@ rule run_n_sweep:
 
 rule plot_n_sweep:
     input:
-        expand(
-            "results/figs/pr_auc_vs_n_donors/{case}.pdf",
-            case=N_SWEEP_CASES,
-        ),
         "results/tables/T4_pr_auc_vs_n_donors.xlsx",
         expand(
             "results/figs/precision_recall_n_sweep/tests/{mean_type}_{trim_mean_fraction}_{case}.pdf",
@@ -237,79 +200,7 @@ rule plot_n_sweep:
             trim_mean_fraction=config["trim_mean_fractions"]["default"],
             case=N_SWEEP_CASES,
         ),
-        expand(
-            "results/figs/precision_recall_n_sweep/filters/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}.pdf",
-            statistical_test=['KS', 'CVM', 'MannWhitneyU'],
-            mean_type=["tri_mean"],
-            trim_mean_fraction=config["trim_mean_fractions"]["default"],
-            case=N_SWEEP_CASES,
-        ),
         "results/tables/T4_precision_recall_vs_n_donors.xlsx",
-
-rule plot_precision_recall_plots:
-    input:
-        path_to_script="src/plotting/plot_precision_recall_b.py",
-
-        paths_to_summary_dfs = expand(
-            "results/figs/precision_recall/summary_dfs/{mean_type}_{trim_mean_fraction}_{statistical_test}_{case}_{proportion}.pkl",
-            mean_type=lambda wildcards: wildcards.mean_type,
-            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
-            statistical_test=lambda wildcards: wildcards.statistical_test,
-            case=lambda wildcards: wildcards.case,
-            proportion=PROPORTIONS,
-        ),
-    output:
-        path_to_output_figure_all_filters="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/all_filters.pdf",
-        path_to_output_figure_without_wasserstein="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/without_wasserstein.pdf",
-        path_to_output_figure_wasserstein="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/wasserstein.pdf",
-        path_to_output_figure_variance="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/variance.pdf",
-        path_to_output_figure_abundance="results/figs/precision_recall/{statistical_test}/{mean_type}_{trim_mean_fraction}_{case}/abundance.pdf",
-        # Variants with the individual data points overlaid, written next to each figure by the same script.
-        paths_to_output_figures_with_points=[
-            f"results/figs/precision_recall/{{statistical_test}}/{{mean_type}}_{{trim_mean_fraction}}_{{case}}/{figure}_with_points.pdf"
-            for figure in ["all_filters", "without_wasserstein", "wasserstein", "variance", "abundance"]
-        ],
-    params:
-        mean_type_to_plot=lambda wildcards: wildcards.mean_type,
-        case_to_plot=lambda wildcards: wildcards.case,
-        proportions_to_plot=" ".join(map(str, PROPORTIONS)),
-        samples_in_dataset=int(config.get("n_samples_per_group_and_sex", 40))*2,
-        statistical_test=lambda wildcards: wildcards.statistical_test,
-        width_of_figure_in_cm=14,
-        height_of_figure_in_cm=6.5,
-        dpi=300,
-        font_size=8,
-        label_font_size=8,
-        show_figure=False
-    wildcard_constraints:
-        mean_type = "mean|tri_mean|trim_mean",
-        trim_mean_fraction = "0|0\\.[0-9]+",
-        case = "CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
-        statistical_test="KS|CVM|MannWhitneyU",
-    resources:
-        slurm_partition="cpu",
-        runtime=60,                 # 1 hours
-        mem_mb=4_000,               # 4 GB
-    shell:
-        """
-        python {input.path_to_script} \
-        --paths_to_summary_dfs {input.paths_to_summary_dfs} \
-        --path_to_output_figure_all_filters {output.path_to_output_figure_all_filters} \
-        --path_to_output_figure_without_wasserstein {output.path_to_output_figure_without_wasserstein} \
-        --path_to_output_figure_wasserstein {output.path_to_output_figure_wasserstein} \
-        --path_to_output_figure_variance {output.path_to_output_figure_variance} \
-        --path_to_output_figure_abundance {output.path_to_output_figure_abundance} \
-        --mean_type_to_plot {params.mean_type_to_plot} \
-        --case_to_plot {params.case_to_plot} \
-        --proportions_to_plot {params.proportions_to_plot} \
-        --samples_in_dataset {params.samples_in_dataset} \
-        --statistical_test {params.statistical_test} \
-        --width_of_figure_in_cm {params.width_of_figure_in_cm} \
-        --height_of_figure_in_cm {params.height_of_figure_in_cm} \
-        --dpi {params.dpi} \
-        --font_size {params.font_size} \
-        --label_font_size {params.label_font_size}
-        """
 
 rule create_summary_statistics:
     input:
@@ -317,15 +208,6 @@ rule create_summary_statistics:
 
         paths_to_mnc_object=expand(
             "results/MNC_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl",
-            statistical_test=lambda wildcards: wildcards.statistical_test,
-            mean_type=lambda wildcards: wildcards.mean_type,
-            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
-            case=lambda wildcards: wildcards.case,
-            proportion=lambda wildcards: wildcards.proportion,
-            dataset_index=range(0,N_DATASETS),
-        ),
-        paths_to_wasserstein_object=expand(
-            "results/Wasserstein_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl",
             statistical_test=lambda wildcards: wildcards.statistical_test,
             mean_type=lambda wildcards: wildcards.mean_type,
             trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
@@ -342,6 +224,7 @@ rule create_summary_statistics:
         trim_mean_fraction= lambda wildcards: wildcards.trim_mean_fraction,
         case=lambda wildcards: wildcards.case,
         proportion=lambda wildcards: wildcards.proportion,
+        n_per_group=int(config.get("n_samples_per_group_and_sex", 40)) * 2,
     wildcard_constraints:
         mean_type="mean|tri_mean|trim_mean",
         trim_mean_fraction="0|0\\.[0-9]+",
@@ -356,13 +239,13 @@ rule create_summary_statistics:
         """
         python {input.path_to_script} \
         --paths_to_mnc_object {input.paths_to_mnc_object} \
-        --paths_to_wasserstein_object {input.paths_to_wasserstein_object} \
         --path_to_expected_perturbations {input.path_to_expected_perturbations} \
         --path_to_summary_df {output.path_to_summary_df} \
         --statistical_test {params.statistical_test} \
         --mean_type {params.mean_type} \
         --case {params.case} \
-        --proportion {params.proportion}
+        --proportion {params.proportion} \
+        --n_per_group {params.n_per_group}
         """
 
 rule get_pr_curve_data:
@@ -560,11 +443,9 @@ rule plot_timings:
         )
     output:
         path_to_timing_figure = 'results/figs/timing_results/timings.pdf',
-        path_to_timing_figure_no_masks = 'results/figs/timing_results/timings_no_masks.pdf',
         path_to_timing_legend = 'results/figs/timing_results/legend.pdf',
         # Variants with the individual data points overlaid, written next to each figure by the same script.
         path_to_timing_figure_with_points = 'results/figs/timing_results/timings_with_points.pdf',
-        path_to_timing_figure_no_masks_with_points = 'results/figs/timing_results/timings_no_masks_with_points.pdf',
     params:
         path_to_timing_results = 'results/Timing_results/',
 
@@ -584,7 +465,6 @@ rule plot_timings:
         python {input.path_to_script} \
         --path_to_all_timings {params.path_to_timing_results} \
         --path_to_timing_fig {output.path_to_timing_figure} \
-        --path_to_timing_fig_no_masks {output.path_to_timing_figure_no_masks} \
         --path_to_legend_fig {output.path_to_timing_legend} \
         --width_in_cm {params.width_in_cm} \
         --height_in_cm {params.height_in_cm} \
@@ -634,7 +514,8 @@ rule create_performed_perturbations_table:
     input:
         path_to_script = 'src/tables/create_performed_perturbations_table.py',
 
-        path_to_gene_perturbations_csv="data/simulation/gene_perturbations_to_perform.csv"
+        path_to_gene_perturbations_csv="data/simulation/gene_perturbations_to_perform.csv",
+        path_to_expected_perturbations_csv="data/simulation/expected_perturbed_pathways_gene_level.csv",
     output:
         path_to_gene_perturbations_excel="results/tables/T2_perturbations.xlsx",
     resources:
@@ -645,6 +526,7 @@ rule create_performed_perturbations_table:
         """
         python {input.path_to_script} \
         --path_to_gene_perturbations_csv {input.path_to_gene_perturbations_csv} \
+        --path_to_expected_perturbations_csv {input.path_to_expected_perturbations_csv} \
         --path_to_gene_perturbations_excel {output.path_to_gene_perturbations_excel}
         """
 
@@ -745,61 +627,115 @@ rule create_statistical_test_ranking_table:
         """
 
 
-rule plot_wasserstein_vs_p_values:
+rule plot_pr_auc_vs_l2fc:
     input:
-        path_to_script = 'src/plotting/plot_wasserstein_vs_p_values.py',
-        path_to_expected_perturbations="data/simulation/expected_perturbed_pathways_gene_level.csv",
-        mnc_file_paths = expand(
-            'results/MNC_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl',
-            mean_type = lambda wildcards: wildcards.mean_type,
-            trim_mean_fraction = lambda wildcards: wildcards.trim_mean_fraction,
-            case = lambda wildcards: wildcards.case,
-            proportion = lambda wildcards: wildcards.proportion,
-            dataset_index=range(0, N_DATASETS),
-        ),
-        wasserstein_paths = expand(
-            'results/Wasserstein_results/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/{case}_{proportion}_{dataset_index}.pkl',
-            mean_type = lambda wildcards: wildcards.mean_type,
-            trim_mean_fraction = lambda wildcards: wildcards.trim_mean_fraction,
-            case = lambda wildcards: wildcards.case,
-            proportion = lambda wildcards: wildcards.proportion,
-            dataset_index=range(0, N_DATASETS),
+        path_to_script='src/plotting/plot_pr_auc_vs_l2fc.py',
+
+        path_to_pr_aucs=expand(
+            'results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{proportion}.pkl',
+            mean_type=lambda wildcards: wildcards.mean_type,
+            trim_mean_fraction=lambda wildcards: wildcards.trim_mean_fraction,
+            case=CASES,
+            proportion=lambda wildcards: wildcards.proportion,
         ),
     output:
-        path_to_ks_figure = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/KS.pdf",
-        path_to_cvm_figure = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/CVM.pdf",
-        path_to_mwu_figure = "results/figs/wasserstein_vs_p_values/{mean_type}_{trim_mean_fraction}/{case}/{proportion}/MannWhitneyU.pdf",
+        path_to_output_figure='results/figs/pr_auc_vs_l2fc/{mean_type}_{trim_mean_fraction}/{proportion}.pdf',
+        # Variant with the individual data points overlaid, written next to the figure by the same script.
+        path_to_output_figure_with_points='results/figs/pr_auc_vs_l2fc/{mean_type}_{trim_mean_fraction}/{proportion}_with_points.pdf',
     params:
-        mean_type=lambda wildcards: wildcards.mean_type,
-        case=lambda wildcards: wildcards.case,
-        proportion=lambda wildcards: wildcards.proportion,
-        width_in_cm=7,
+        path_to_pr_aucs='results/figs/pr_curves/summary_data/pr_aucs/',
+        cases=" ".join(CASES),
+        n_donors_per_group=int(config.get("n_samples_per_group_and_sex", 40)) * 2,
+        # The y-axis is cut between 0.2 and 0.6 only for the manuscript panel (Fig. 2D); in the other settings PR AUCs
+        # fall inside the cut.
+        broken_y_axis=lambda wildcards: (
+            '--broken_y_axis' if (wildcards.mean_type, wildcards.proportion) == ('tri_mean', '1.0') else ''
+        ),
+        width_in_cm=8,
         height_in_cm=7,
         font_size=8,
     wildcard_constraints:
         mean_type="mean|tri_mean|trim_mean",
         trim_mean_fraction="0|0\\.[0-9]+",
-        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
         proportion="0.1|0.3|0.5|0.8|1.0",
     resources:
-        slurm_partition = "cpu",
-        runtime = 30,               # 30 min
-        mem_mb = 2_000,             # 2 GB
+        slurm_partition="cpu",
+        runtime=5,                  # 5 min
+        mem_mb=800,                 # 800 MB
     shell:
         """
         python {input.path_to_script} \
-        --path_to_expected_perturbations {input.path_to_expected_perturbations} \
-        --mnc_file_paths {input.mnc_file_paths} \
-        --wasserstein_paths {input.wasserstein_paths} \
-        --path_to_ks_figure {output.path_to_ks_figure} \
-        --path_to_cvm_figure {output.path_to_cvm_figure} \
-        --path_to_mwu_figure {output.path_to_mwu_figure} \
-        --mean_type {params.mean_type} \
-        --case {params.case} \
-        --proportion {params.proportion} \
+        --path_to_pr_aucs {params.path_to_pr_aucs} \
+        --path_to_output_figure {output.path_to_output_figure} \
+        --proportion {wildcards.proportion} \
+        --mean_type {wildcards.mean_type}_{wildcards.trim_mean_fraction} \
+        --cases {params.cases} \
+        --n_donors_per_group {params.n_donors_per_group} \
         --width_in_cm {params.width_in_cm} \
         --height_in_cm {params.height_in_cm} \
-        --font_size {params.font_size}
+        --font_size {params.font_size} \
+        --plot_significant_difference {params.broken_y_axis}
+        """
+
+rule create_neuronchat_timing_summary_table:
+    input:
+        path_to_script='src/tables/create_neuronchat_timing_summary_table.py',
+
+        paths_to_timing_csvs=expand(
+            'results/neuron_chat/timing/timing_communication_scores/{case}_{proportion}_{dataset_index}.csv',
+            case=CASES,
+            proportion=PROPORTIONS,
+            dataset_index=range(0, N_DATASETS),
+        ),
+        paths_to_timing_comparison_csvs=expand(
+            'results/neuron_chat/timing/timing_comparison/{case}_{proportion}_{dataset_index}_comparison.csv',
+            case=CASES,
+            proportion=PROPORTIONS,
+            dataset_index=range(0, N_DATASETS),
+        ),
+    output:
+        path_to_timing_result_summary_csv='results/tables/T3_NeuronChat_Runtime.csv',
+        path_to_timing_result_summary_xlsx='results/tables/T3_NeuronChat_Runtime.xlsx',
+    params:
+        path_to_timing_results='results/neuron_chat/timing/timing_communication_scores/',
+        path_to_timing_comparison_results='results/neuron_chat/timing/timing_comparison/',
+    resources:
+        slurm_partition="cpu",
+        runtime=10,                 # 10 min
+        mem_mb=800,                 # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_timing_results {params.path_to_timing_results} \
+        --path_to_timing_comparison_results {params.path_to_timing_comparison_results} \
+        --path_to_timing_result_summary_csv {output.path_to_timing_result_summary_csv} \
+        --path_to_timing_result_summary_xlsx {output.path_to_timing_result_summary_xlsx}
+        """
+
+rule create_simulation_summary_table:
+    input:
+        path_to_script='src/tables/create_simulation_summary_table.py',
+
+        path_to_pr_auc_summary_table_excel="results/tables/T4_pr_aucs_summary_table.xlsx",
+        path_to_averaging_mode_comparison_table_excel="results/tables/T4_averaging_mode_comparison.xlsx",
+        path_to_statistical_test_ranking_table_excel="results/tables/T4_statistical_test_ranking.xlsx",
+        path_to_pr_auc_vs_n_donors_table_excel="results/tables/T4_pr_auc_vs_n_donors.xlsx",
+        path_to_precision_recall_vs_n_donors_table_excel="results/tables/T4_precision_recall_vs_n_donors.xlsx",
+    output:
+        path_to_simulation_summary_table_excel="results/tables/T4_Simulation_Summary.xlsx",
+    resources:
+        slurm_partition="cpu",
+        runtime=10,                 # 10 min
+        mem_mb=800,                 # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_pr_auc_summary_table_excel {input.path_to_pr_auc_summary_table_excel} \
+        --path_to_averaging_mode_comparison_table_excel {input.path_to_averaging_mode_comparison_table_excel} \
+        --path_to_statistical_test_ranking_table_excel {input.path_to_statistical_test_ranking_table_excel} \
+        --path_to_pr_auc_vs_n_donors_table_excel {input.path_to_pr_auc_vs_n_donors_table_excel} \
+        --path_to_precision_recall_vs_n_donors_table_excel {input.path_to_precision_recall_vs_n_donors_table_excel} \
+        --path_to_simulation_summary_table_excel {output.path_to_simulation_summary_table_excel}
         """
 
 rule fit_umap:
@@ -1466,7 +1402,6 @@ rule run_MultiNeuronChat:
         path_to_subject_wise_max_normalized_loom=f"data/normalized_data/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.loom",
     output:
         path_to_mnc_output_file=f"results/MNC_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
-        path_to_wasserstein_dict_file=f"results/Wasserstein_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
         path_to_timing_dict_file=f"results/Timing_results/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{proportion}}/{{case}}_{{proportion}}_{{dataset_index}}.pkl",
     threads: 8
     params:
@@ -1480,16 +1415,14 @@ rule run_MultiNeuronChat:
         proportion="0.1|0.3|0.5|0.8|1.0",
         dataset_index="[0-9]+",
     resources:
-        # TODO adjust memory and run-time
         slurm_partition="cpu",
-        runtime=120,             # 2 hours
+        runtime=30,              # 30 min (a run takes up to 15 min)
         mem_mb=8_000,            # 8 GB
     shell:
         """
             python {input.path_to_script} \
             --path_to_subject_wise_max_normalized_loom {input.path_to_subject_wise_max_normalized_loom} \
             --path_to_mnc_output_file {output.path_to_mnc_output_file} \
-            --path_to_wasserstein_dict_file {output.path_to_wasserstein_dict_file} \
             --path_to_timing_dict_file {output.path_to_timing_dict_file} \
             --mean_type {params.mean_type} \
             --trim_mean_fraction {params.trim_mean_fraction} \
@@ -1589,7 +1522,6 @@ rule run_MultiNeuronChat_n_sweep:
         path_to_subject_wise_max_normalized_loom=f"data/normalized_data_n_sweep/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.loom",
     output:
         path_to_mnc_output_file=f"results/MNC_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
-        path_to_wasserstein_dict_file=f"results/Wasserstein_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
         path_to_timing_dict_file=f"results/Timing_results_n_sweep/{{mean_type}}_{{trim_mean_fraction}}/{{case}}/{{n_donors}}/{{case}}_{{n_donors}}_{{dataset_index}}.pkl",
     threads: 8
     params:
@@ -1604,14 +1536,13 @@ rule run_MultiNeuronChat_n_sweep:
         dataset_index="[0-9]+",
     resources:
         slurm_partition="cpu",
-        runtime=120,            # 2 hours
+        runtime=30,             # 30 min (a run takes up to 15 min)
         mem_mb=8_000,           # 8 GB
     shell:
         """
             python {input.path_to_script} \
             --path_to_subject_wise_max_normalized_loom {input.path_to_subject_wise_max_normalized_loom} \
             --path_to_mnc_output_file {output.path_to_mnc_output_file} \
-            --path_to_wasserstein_dict_file {output.path_to_wasserstein_dict_file} \
             --path_to_timing_dict_file {output.path_to_timing_dict_file} \
             --mean_type {params.mean_type} \
             --trim_mean_fraction {params.trim_mean_fraction} \
@@ -1657,67 +1588,6 @@ rule get_pr_curve_data_n_sweep:
         --statistical_tests {params.statistical_tests}
         """
 
-rule plot_pr_aucs_vs_n_donors:
-    input:
-        path_to_script='src/plotting/plot_pr_aucs_vs_n_donors.py',
-
-        path_to_curves_output=expand(
-            'results/figs/pr_curves_n_sweep/summary_data/curves/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
-            mean_type=N_SWEEP_MEAN_TYPES,
-            trim_mean_fraction=config['trim_mean_fractions']['default'],
-            case=lambda wildcards: wildcards.case,
-            n_donors=N_DONORS_SWEEP,
-        ),
-        path_to_pr_aucs_output=expand(
-            'results/figs/pr_curves_n_sweep/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
-            mean_type=N_SWEEP_MEAN_TYPES,
-            trim_mean_fraction=config['trim_mean_fractions']['default'],
-            case=lambda wildcards: wildcards.case,
-            n_donors=N_DONORS_SWEEP,
-        ),
-        path_to_error_bands_dict=expand(
-            'results/figs/pr_curves_n_sweep/summary_data/error_bands/{mean_type}_{trim_mean_fraction}_{case}_{n_donors}.pkl',
-            mean_type=N_SWEEP_MEAN_TYPES,
-            trim_mean_fraction=config['trim_mean_fractions']['default'],
-            case=lambda wildcards: wildcards.case,
-            n_donors=N_DONORS_SWEEP,
-        ),
-    output:
-        path_to_output_figure='results/figs/pr_auc_vs_n_donors/{case}.pdf',
-        # Variants with the individual data points overlaid, written next to each figure by the same script.
-        path_to_output_figure_with_points='results/figs/pr_auc_vs_n_donors/{case}_with_points.pdf',
-    params:
-        path_to_curves='results/figs/pr_curves_n_sweep/summary_data/curves/',
-        path_to_pr_aucs='results/figs/pr_curves_n_sweep/summary_data/pr_aucs/',
-        path_to_error_bands_dict='results/figs/pr_curves_n_sweep/summary_data/error_bands/',
-
-        mean_types=" ".join([f"{m}_0" for m in N_SWEEP_MEAN_TYPES]),
-        n_donors=" ".join(map(str, N_DONORS_SWEEP)),
-
-        width_in_cm=14,
-        height_in_cm=8,
-        font_size=8,
-    wildcard_constraints:
-        case="CASE_0.3|CASE_0.5|CASE_1|CASE_1.5",
-    resources:
-        slurm_partition="cpu",
-        runtime=5,  # 5 min
-        mem_mb=800,  # 800 MB
-    shell:
-        """
-        python {input.path_to_script} \
-        --path_to_curves {params.path_to_curves} \
-        --path_to_pr_aucs {params.path_to_pr_aucs} \
-        --path_to_error_bands_dict {params.path_to_error_bands_dict} \
-        --path_to_output_figure {output.path_to_output_figure} \
-        --case {wildcards.case} \
-        --mean_types {params.mean_types} \
-        --n_donors {params.n_donors} \
-        --width_in_cm {params.width_in_cm} \
-        --height_in_cm {params.height_in_cm} \
-        --font_size {params.font_size}
-        """
-
 rule create_pr_auc_vs_n_donors_table:
     input:
         path_to_script='src/tables/create_pr_auc_vs_n_donors_table.py',
@@ -1729,10 +1599,19 @@ rule create_pr_auc_vs_n_donors_table:
             case=N_SWEEP_CASES,
             n_donors=N_DONORS_SWEEP,
         ),
+        # The full-cohort benchmark at proportion 1.0 is the largest cohort of the sweep.
+        path_to_full_cohort_pr_aucs_outputs=expand(
+            'results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_1.0.pkl',
+            mean_type=N_SWEEP_MEAN_TYPES,
+            trim_mean_fraction=config['trim_mean_fractions']['default'],
+            case=N_SWEEP_CASES,
+        ),
     output:
         path_to_pr_auc_summary_table_excel="results/tables/T4_pr_auc_vs_n_donors.xlsx",
     params:
         path_to_summary_pkls="results/figs/pr_curves_n_sweep/summary_data/pr_aucs/",
+        path_to_full_cohort_summary_pkls="results/figs/pr_curves/summary_data/pr_aucs/",
+        full_cohort_n_per_group=int(config.get("n_samples_per_group_and_sex", 40)) * 2,
         mean_types=" ".join([f"{m}_0" for m in N_SWEEP_MEAN_TYPES]),
         cases=" ".join(N_SWEEP_CASES),
         n_donors=" ".join(map(str, N_DONORS_SWEEP)),
@@ -1745,6 +1624,8 @@ rule create_pr_auc_vs_n_donors_table:
         python {input.path_to_script} \
         --path_to_summary_pkls {params.path_to_summary_pkls} \
         --path_to_pr_auc_summary_table_excel {output.path_to_pr_auc_summary_table_excel} \
+        --path_to_full_cohort_summary_pkls {params.path_to_full_cohort_summary_pkls} \
+        --full_cohort_n_per_group {params.full_cohort_n_per_group} \
         --mean_types {params.mean_types} \
         --cases {params.cases} \
         --n_donors {params.n_donors}
@@ -1814,16 +1695,8 @@ rule plot_precision_recall_vs_n_donors:
         path_to_full_cohort_pr_aucs="results/figs/pr_curves/summary_data/pr_aucs/{mean_type}_{trim_mean_fraction}_{case}_1.0.pkl",
     output:
         path_to_output_figure_tests="results/figs/precision_recall_n_sweep/tests/{mean_type}_{trim_mean_fraction}_{case}.pdf",
-        paths_to_output_figure_filters=[
-            f"results/figs/precision_recall_n_sweep/filters/{statistical_test}/{{mean_type}}_{{trim_mean_fraction}}_{{case}}.pdf"
-            for statistical_test in ['KS', 'CVM', 'MannWhitneyU']
-        ],
         # Variants with the individual data points overlaid, written next to each figure by the same script.
         path_to_output_figure_tests_with_points="results/figs/precision_recall_n_sweep/tests/{mean_type}_{trim_mean_fraction}_{case}_with_points.pdf",
-        paths_to_output_figure_filters_with_points=[
-            f"results/figs/precision_recall_n_sweep/filters/{statistical_test}/{{mean_type}}_{{trim_mean_fraction}}_{{case}}_with_points.pdf"
-            for statistical_test in ['KS', 'CVM', 'MannWhitneyU']
-        ],
     params:
         path_to_n_sweep_pr_aucs="results/figs/pr_curves_n_sweep/summary_data/pr_aucs/",
         path_to_full_cohort_pr_aucs="results/figs/pr_curves/summary_data/pr_aucs/",
@@ -1849,8 +1722,7 @@ rule plot_precision_recall_vs_n_donors:
         --case {wildcards.case} \
         --n_donors {params.n_donors} \
         --full_cohort_n_per_group {params.full_cohort_n_per_group} \
-        --path_to_output_figure_tests {output.path_to_output_figure_tests} \
-        --paths_to_output_figure_filters {output.paths_to_output_figure_filters}
+        --path_to_output_figure_tests {output.path_to_output_figure_tests}
         """
 
 rule create_precision_recall_vs_n_donors_table:
@@ -1864,6 +1736,14 @@ rule create_precision_recall_vs_n_donors_table:
             case=N_SWEEP_CASES,
             n_donors=N_DONORS_SWEEP,
         ),
+        # The full-cohort benchmark at proportion 1.0 is the largest cohort of the sweep.
+        paths_to_full_cohort_summary_dfs=expand(
+            "results/figs/precision_recall/summary_dfs/{mean_type}_{trim_mean_fraction}_{statistical_test}_{case}_1.0.pkl",
+            mean_type=["tri_mean"],
+            trim_mean_fraction=config["trim_mean_fractions"]["default"],
+            statistical_test=['KS', 'CVM', 'MannWhitneyU'],
+            case=N_SWEEP_CASES,
+        ),
     output:
         path_to_table_excel="results/tables/T4_precision_recall_vs_n_donors.xlsx",
     resources:
@@ -1874,6 +1754,7 @@ rule create_precision_recall_vs_n_donors_table:
         """
         python {input.path_to_script} \
         --paths_to_summary_dfs {input.paths_to_summary_dfs} \
+        --paths_to_full_cohort_summary_dfs {input.paths_to_full_cohort_summary_dfs} \
         --path_to_table_excel {output.path_to_table_excel}
         """
 

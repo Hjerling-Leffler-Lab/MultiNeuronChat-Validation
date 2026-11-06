@@ -5,14 +5,16 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
-from utils import (
-    cm,
+from prefilter_utils import (
     filter_display_names,
     filter_colors,
     filter_line_styles,
     filter_markers,
     filter_hollow_markers,
     make_test_label,
+)
+from utils import (
+    cm,
     draw_beeswarm,
     median_and_iqr_errors,
     with_points_path,

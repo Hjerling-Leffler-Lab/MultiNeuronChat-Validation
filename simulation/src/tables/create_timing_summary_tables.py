@@ -96,53 +96,19 @@ def main():
         '1.0'
     ]
 
-    timing_df: pd.DataFrame = pd.DataFrame(columns=[
-        'Mean Type',
-        'Trim Mean Value',
-        'Log2 FC',
-        'Proportion of Affected Donors',
-        'Repeat Index',
+    # Timed steps of step 7, in table order. Keys not listed here (the prefilter masks or a legacy Anderson test in
+    # older timing files) are left out.
+    timing_keys: list[str] = [
         'computation_of_communication_scores',
-        'computation_of_communication_scores_start',
-        'computation_of_communication_scores_end',
-        'computation_of_communication_scores_difference',
-        'wasserstein_mask',
-        'wasserstein_mask_start',
-        'wasserstein_mask_end',
-        'wasserstein_mask_difference',
-        'variance_mask',
-        'variance_mask_start',
-        'variance_mask_end',
-        'variance_mask_difference',
-        'abundance_mask',
-        'abundance_mask_start',
-        'abundance_mask_end',
-        'abundance_mask_difference',
         'significance_KS',
-        'significance_KS_start',
-        'significance_KS_end',
-        'significance_KS_difference',
         'significance_CVM',
-        'significance_CVM_start',
-        'significance_CVM_end',
-        'significance_CVM_difference',
         'significance_MannWhitneyU',
-        'significance_MannWhitneyU_start',
-        'significance_MannWhitneyU_end',
-        'significance_MannWhitneyU_difference',
         'correction_KS',
-        'correction_KS_start',
-        'correction_KS_end',
-        'correction_KS_difference',
         'correction_CVM',
-        'correction_CVM_start',
-        'correction_CVM_end',
-        'correction_CVM_difference',
         'correction_MannWhitneyU',
-        'correction_MannWhitneyU_start',
-        'correction_MannWhitneyU_end',
-        'correction_MannWhitneyU_difference',
-    ])
+    ]
+
+    rows: list[dict[str, str | int | float]] = []
 
     for mean in means:
         mean_type, trim_mean_value = convert_mean_to_str_version(mean)
@@ -154,39 +120,34 @@ def main():
             for proportion_affected_donor in proportion_affected_donors:
                 path_to_specific_timings: str = os.path.join(path_to_timing_results, mean, case, proportion_affected_donor)
 
-                # Get all files in this directory
-                timing_files: list[str] = [
-                    os.path.join(path_to_specific_timings, x)
-                    for x in os.listdir(path_to_specific_timings)
-                    if x.endswith('.pkl')
-                ]
+                # Timing files are named {case}_{proportion}_{dataset_index}.pkl
+                timing_files: list[str] = sorted(
+                    (x for x in os.listdir(path_to_specific_timings) if x.endswith('.pkl')),
+                    key=lambda x: int(x[:-len('.pkl')].split('_')[-1]),
+                )
 
-                for i, timing_file in enumerate(timing_files):
-                    with open(timing_file, 'rb') as f:
+                for timing_file in timing_files:
+                    with open(os.path.join(path_to_specific_timings, timing_file), 'rb') as f:
                         # Timing data is a dict with keys as timing types and values as tuples of floats for start and end times
-                        timing_data: dict[str, float] = pickle.load(f)
+                        timing_data: dict[str, tuple[float, float]] = pickle.load(f)
 
-                         # Extract the relevant timing information
+                    timing_info: dict[str, str | int | float] = {
+                        'Mean Type': mean_type,
+                        'Trim Mean Value': trim_mean_value,
+                        'Log2 FC': log2_fc,
+                        'Proportion of Affected Donors': proportion_affected_donor,
+                        'Repeat Index': int(timing_file[:-len('.pkl')].split('_')[-1]),
+                    }
 
-                        timing_info: dict[str, str | float | tuple[float, float]] = {
-                            'Mean Type': mean_type,
-                            'Trim Mean Value': trim_mean_value,
-                            'Log2 FC': log2_fc,
-                            'Proportion of Affected Donors': proportion_affected_donor,
-                            'Repeat Index': i,
-                        }
+                    for key in timing_keys:
+                        start, end, difference = split_timing_tuple(timing_data.get(key, (np.nan, np.nan)))
+                        timing_info[f'{key}_start'] = start
+                        timing_info[f'{key}_end'] = end
+                        timing_info[f'{key}_difference'] = difference
 
-                        for key in timing_data.keys():
-                            timing_tuple: tuple[float, float] = timing_data.get(key, (np.nan, np.nan))
-                            start, end, difference = split_timing_tuple(timing_tuple)
-                            timing_info[key] = timing_tuple
-                            timing_info[f'{key}_start'] = start
-                            timing_info[f'{key}_end'] = end
-                            timing_info[f'{key}_difference'] = difference
+                    rows.append(timing_info)
 
-
-                        # Append the timing information to the DataFrame
-                        timing_df = pd.concat([timing_df, pd.DataFrame([timing_info])], ignore_index=True)
+    timing_df: pd.DataFrame = pd.DataFrame(rows)
 
     # Save df to CSV and Excel
     timing_df.to_csv(path_to_timing_result_summary_csv, index=False)

@@ -1,4 +1,4 @@
-import pickle
+import math
 
 import numpy as np
 import xarray as xr
@@ -7,8 +7,9 @@ import pandas as pd
 from scipy import stats
 
 from multineuronchat import MultiNeuronChatObject
+from multineuronchat.power import minimum_detectable_p
 
-from utils import get_expected_perturbations_array, filter_display_names, make_test_label
+from utils import get_expected_perturbations_array
 
 import argparse
 
@@ -40,19 +41,6 @@ def compute_confusion_matrix(
     )
 
     return confusion_matrix
-
-
-def top_percentile_mask(statistic: xr.DataArray, keep_fraction: float = 0.1) -> xr.DataArray:
-    """
-    Build a boolean mask keeping the triples with the largest statistic values, at the requested
-    retained fraction. NaN triples (untestable) never pass, matching the package mask semantics.
-
-    :param statistic: per-triple statistic with dims (source, receiver, interaction), NaN where undefined
-    :param keep_fraction: fraction of triples to keep (0.1 keeps the top 10%)
-    :return: boolean DataArray, True for the retained triples
-    """
-    threshold: float = np.nanpercentile(statistic, 100 * (1 - keep_fraction))
-    return statistic >= threshold
 
 
 def precision_recall_from_p_values_adj(
@@ -105,16 +93,72 @@ def fdr_correct(raw_p_values: xr.DataArray, mask: xr.DataArray | None = None) ->
     return xr.DataArray(corrected, dims=selected.dims, coords=selected.coords)
 
 
+def triples_needed_at_floor(p_min: float, n_hypotheses: int, alpha: float = 0.05) -> int:
+    """
+    Smallest number of discoveries the Benjamini-Hochberg procedure can make in a given design.
+
+    The k-th smallest p-value is significant only if p_(k) <= k * alpha / m. Since no p-value can fall below the
+    permutation floor p_min, a significance call needs k >= p_min * m / alpha: below this many triples at
+    (or near) the floor, nothing can be called, whatever the effect size.
+
+    :param p_min: uncorrected minimal attainable p-value of the design (minimum_detectable_p)
+    :param n_hypotheses: number of hypotheses entering the correction (m)
+    :param alpha: significance level of the corrected p-values
+    :return: the minimal number of triples that must reach the floor together (at least 1)
+    """
+    return max(1, int(math.ceil(p_min * n_hypotheses / alpha)))
+
+
+def dataset_metrics(
+        raw_p_values: xr.DataArray,
+        reference_matrix: xr.DataArray,
+        p_min: float,
+        mask: xr.DataArray | None = None,
+        alpha: float = 0.05,
+) -> dict[str, int | float]:
+    """
+    Precision, recall and the p-value-floor counts of one dataset and one statistical test.
+
+    :param raw_p_values: uncorrected per-triple p-values (NaN where untestable)
+    :param reference_matrix: the ground-truth perturbation matrix (1 for perturbed triples)
+    :param p_min: minimal attainable p-value of the design (minimum_detectable_p)
+    :param mask: optional prefilter restricting the triples that enter the BH correction
+    :param alpha: significance level of the corrected p-values
+    :return: one row of the precision/recall summary
+    """
+    selected: xr.DataArray = raw_p_values if mask is None else raw_p_values.where(mask)
+    p_values_adj: xr.DataArray = fdr_correct(raw_p_values, mask=mask)
+
+    precision, recall = precision_recall_from_p_values_adj(
+        reference_matrix=reference_matrix,
+        p_values_adj=p_values_adj,
+    )
+
+    finite: np.ndarray = np.isfinite(selected.values)
+    n_hypotheses: int = int(finite.sum())
+    significant: np.ndarray = (p_values_adj < alpha).values
+    true_positive: np.ndarray = significant & (reference_matrix.values == 1)
+
+    return {
+        'Precision': precision,
+        'Recall': recall,
+        'N Significant': int(significant.sum()),
+        'N True Positives': int(true_positive.sum()),
+        'N Ground Truth Tested': int((finite & (reference_matrix.values == 1)).sum()),
+        'N Hypotheses': n_hypotheses,
+        'Min Raw P': float(np.nanmin(selected.values)) if n_hypotheses > 0 else np.nan,
+        'P Floor': p_min,
+        # Relative tolerance: exact p-values at the floor can differ from 2 / C(2n, n) in the last bits.
+        'N At Floor': int((selected.values[finite] <= p_min * (1 + 1e-6)).sum()),
+        'N Needed At Floor': triples_needed_at_floor(p_min, n_hypotheses, alpha=alpha) if n_hypotheses > 0 else np.nan,
+    }
+
+
 def main():
     # Parse the arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--paths_to_mnc_object',
-        nargs='+',
-        required=True,
-    )
-    parser.add_argument(
-        '--paths_to_wasserstein_object',
         nargs='+',
         required=True,
     )
@@ -148,95 +192,55 @@ def main():
         type=float,
         required=True,
     )
+    parser.add_argument(
+        '--n_per_group',
+        type=int,
+        required=True,
+        help='Donors per group (cases = controls)',
+    )
 
     args = parser.parse_args()
 
-    paths_to_mnc_object: str = args.paths_to_mnc_object
-    paths_to_wasserstein_object: str = args.paths_to_wasserstein_object
-    path_to_expected_perturbations: str = args.path_to_expected_perturbations
-    path_to_summary_df: str = args.path_to_summary_df
-
-    statistical_test: str = args.statistical_test
-
-    mean_type = args.mean_type
-    case = args.case
-    proportion = args.proportion
-
-    expected_perturbations: pd.DataFrame = pd.read_csv(path_to_expected_perturbations)
+    expected_perturbations: pd.DataFrame = pd.read_csv(args.path_to_expected_perturbations)
     expected_perturbations['Interaction'] = [
         '_'.join([ligand, target])
         for ligand, target in zip(expected_perturbations['Ligand'], expected_perturbations['Target'])
     ]
-    reference_mnc_object: MultiNeuronChatObject = MultiNeuronChatObject.load(paths_to_mnc_object[0])
-    reference_matrix: xr.DataArray = get_expected_perturbations_array(
-        expected_perturbations=expected_perturbations,
-        mnc_object=reference_mnc_object
-    )
-    del reference_mnc_object
 
+    p_min, _ = minimum_detectable_p(args.n_per_group, args.n_per_group)
 
-    precision_recall_dict: dict[str, list[str | float]] = {
-        'Mean Type': [],
-        'Case': [],
-        'Proportion': [],
-        'Statistical Test': [],
-        'Precision': [],
-        'Recall': []
-    }
+    rows: list[dict[str, str | int | float]] = []
 
-    for mnc_path, wasserstein_path in zip(paths_to_mnc_object, paths_to_wasserstein_object):
+    reference_matrix: xr.DataArray | None = None
+
+    for dataset_index, mnc_path in enumerate(args.paths_to_mnc_object):
         mnc_object = MultiNeuronChatObject.load(mnc_path)
-        wasserstein_object: dict[str, xr.DataArray] = pickle.load(
-            open(
-                wasserstein_path,
-                'rb'
+
+        if reference_matrix is None:
+            reference_matrix = get_expected_perturbations_array(
+                expected_perturbations=expected_perturbations,
+                mnc_object=mnc_object,
             )
-        )
 
-        # Build one BH-corrected p-value cube per prefilter. 'None' is the unfiltered baseline, which was
-        # already computed and corrected in step 7, so it is reused directly. The legacy Wasserstein filter
-        # and the label-blind Variance/Abundance filters are each applied at two retentions: 'top10' keeps
-        # the top 10% of triples by the statistic, 'min0' keeps every triple whose statistic is strictly
-        # positive (dropping only untestable, all-zero triples).
-        wasserstein_distances: xr.DataArray = wasserstein_object['wasserstein_distances']
-        variances: xr.DataArray = wasserstein_object['variances']
-        abundances: xr.DataArray = wasserstein_object['abundances']
-
-        # 'None' keeps every testable triple; the other filters restrict the correction to a subset.
-        # The raw p-values are the same for every filter (reused from step 7); only the BH-correction
-        # denominator differs.
-        masks: dict[str, xr.DataArray | None] = {
-            'None': None,
-            'Wasserstein': top_percentile_mask(wasserstein_distances, keep_fraction=0.1),
-            'Variance-top10': top_percentile_mask(variances, keep_fraction=0.1),
-            'Variance-min0': variances > 0,
-            'Abundance-top10': top_percentile_mask(abundances, keep_fraction=0.1),
-            'Abundance-min0': abundances > 0,
-        }
-
-        raw_p_values: xr.DataArray = mnc_object.p_values[statistical_test]
-
-        p_values_adj_per_filter: dict[str, xr.DataArray] = {
-            filter_key: fdr_correct(raw_p_values, mask=mask)
-            for filter_key, mask in masks.items()
-        }
-
-        # Append one row per filter, in the canonical order defined in utils.filter_display_names.
-        for filter_key in filter_display_names:
-            precision, recall = precision_recall_from_p_values_adj(
+        rows.append({
+            'Mean Type': args.mean_type,
+            'Case': args.case,
+            'Proportion': args.proportion,
+            'N Donors Per Group': args.n_per_group,
+            'Dataset Index': dataset_index,
+            'Statistical Test': f'{args.statistical_test}_adj',
+            'Test': args.statistical_test,
+            **dataset_metrics(
+                raw_p_values=mnc_object.p_values[args.statistical_test],
                 reference_matrix=reference_matrix,
-                p_values_adj=p_values_adj_per_filter[filter_key],
-            )
+                p_min=p_min,
+            ),
+        })
 
-            precision_recall_dict['Mean Type'].append(mean_type)
-            precision_recall_dict['Case'].append(case)
-            precision_recall_dict['Proportion'].append(proportion)
-            precision_recall_dict['Statistical Test'].append(make_test_label(filter_key, statistical_test))
-            precision_recall_dict['Precision'].append(precision)
-            precision_recall_dict['Recall'].append(recall)
+        del mnc_object
 
-    precision_recall_df: pd.DataFrame = pd.DataFrame(precision_recall_dict)
-    precision_recall_df.to_pickle(path_to_summary_df)
+    pd.DataFrame(rows).to_pickle(args.path_to_summary_df)
+
 
 if __name__ == '__main__':
     main()

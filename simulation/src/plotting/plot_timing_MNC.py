@@ -132,11 +132,6 @@ def main():
         required=True,
     )
     parser.add_argument(
-        '--path_to_timing_fig_no_masks',
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
         '--path_to_legend_fig',
         type=str,
         required=True,
@@ -174,7 +169,6 @@ def main():
 
     path_to_all_timings: str = args.path_to_all_timings
     path_to_timing_fig: str = args.path_to_timing_fig
-    path_to_timing_fig_no_masks: str = args.path_to_timing_fig_no_masks
     path_to_legend_fig: str = args.path_to_legend_fig
 
     width_in_cm: float = args.width_in_cm
@@ -186,7 +180,6 @@ def main():
     fontsize: float = args.fontsize
 
     os.makedirs(os.path.dirname(path_to_timing_fig), exist_ok=True)
-    os.makedirs(os.path.dirname(path_to_timing_fig_no_masks), exist_ok=True)
     os.makedirs(os.path.dirname(path_to_legend_fig), exist_ok=True)
 
     means: list[str] = ['mean_0', 'tri_mean_0', 'trim_mean_0.1', 'trim_mean_0.05']
@@ -276,15 +269,12 @@ def main():
     # Remove the total_time
     all_timings_df = all_timings_df[all_timings_df['timing_type'] != 'total_time']
 
-    # Explicit left-to-right ordering of the timing events, grouped into: setup (communication scores),
-    # the three label-blind prefilter masks, per-test significance, per-test FDR correction, and the
-    # per-test total. Passing `order=` makes the x-axis self-consistent regardless of dict/file order,
-    # and any timing key not listed here (e.g. a legacy Anderson column) is simply not drawn.
+    # Explicit left-to-right ordering of the timing events, grouped into: setup (communication scores), per-test
+    # significance, per-test FDR correction, and the per-test total. Passing `order=` makes the x-axis self-consistent
+    # regardless of dict/file order, and any timing key not listed here (e.g. the prefilter masks or a legacy Anderson
+    # column in older timing files) is simply not drawn.
     category_order: list[str] = [
         'computation_of_communication_scores',
-        'wasserstein_mask',
-        'variance_mask',
-        'abundance_mask',
         'significance_KS',
         'significance_CVM',
         'significance_MannWhitneyU',
@@ -297,9 +287,6 @@ def main():
     ]
     category_labels: list[str] = [
         'Com.\nScores',
-        'Wass.\nMask',
-        'Var.\nMask',
-        'Abund.\nMask',
         'KS',
         'CVM',
         'MWU',
@@ -313,41 +300,12 @@ def main():
 
     color_palette = sns.color_palette('husl', len(means))
 
-    # Full figure: communication scores, prefilter masks, significance, correction and total per test.
-    # Each figure is drawn plain and with every run overlaid; the legend is taken from the plain one.
+    # Drawn plain and with every run overlaid; the legend is taken from the plain one.
     for path_to_fig, show_points in ((path_to_timing_fig, False), (with_points_path(path_to_timing_fig), True)):
         axs = plot_timings(
             all_timings_df=all_timings_df,
             category_order=category_order,
             category_labels=category_labels,
-            divider_positions=[0.5, 3.5, 6.5, 9.5],
-            section_headers=[
-                (1, 3, 'Prefilter Masks'),
-                (4, 6, 'Computation of Significance'),
-                (7, 9, 'Correction of P-Values'),
-                (10, 12, 'Total Time per Test'),
-            ],
-            color_palette=color_palette,
-            path_to_fig=path_to_fig,
-            width_in_cm=width_in_cm,
-            height_in_cm=height_in_cm,
-            fontsize=fontsize,
-            show_points=show_points,
-        )
-        if not show_points:
-            all_means_axs = axs
-
-    # Same figure without the prefilter masks
-    mask_categories: set[str] = {'wasserstein_mask', 'variance_mask', 'abundance_mask'}
-    no_mask_order: list[str] = [c for c in category_order if c not in mask_categories]
-    no_mask_labels: list[str] = [l for c, l in zip(category_order, category_labels) if c not in mask_categories]
-    for path_to_fig, show_points in (
-            (path_to_timing_fig_no_masks, False), (with_points_path(path_to_timing_fig_no_masks), True),
-    ):
-        plot_timings(
-            all_timings_df=all_timings_df[~all_timings_df['timing_type'].isin(mask_categories)],
-            category_order=no_mask_order,
-            category_labels=no_mask_labels,
             divider_positions=[0.5, 3.5, 6.5],
             section_headers=[
                 (1, 3, 'Computation of Significance'),
@@ -361,6 +319,8 @@ def main():
             fontsize=fontsize,
             show_points=show_points,
         )
+        if not show_points:
+            all_means_axs = axs
 
     # Plot the legend separately
     legend_fig, legend_axs = plt.subplots(1, 1, figsize=(width_in_cm_legend * cm, height_in_cm_legend * cm))

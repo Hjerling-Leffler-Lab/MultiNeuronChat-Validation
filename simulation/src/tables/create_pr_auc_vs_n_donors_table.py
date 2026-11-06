@@ -18,9 +18,20 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
+    '--path_to_full_cohort_summary_pkls',
+    type=str,
+    required=True,
+    help='PR AUCs of the full-cohort benchmark; its proportion-1.0 datasets are the largest cohort of the sweep',
+)
+parser.add_argument(
+    '--full_cohort_n_per_group',
+    type=int,
+    required=True,
+)
+parser.add_argument(
     '--mean_types',
     nargs='+',
-    default=['mean_0', 'tri_mean_0'],
+    default=['tri_mean_0'],
 )
 parser.add_argument(
     '--cases',
@@ -37,6 +48,8 @@ args = parser.parse_args()
 
 path_to_summary_pkls: str = args.path_to_summary_pkls
 path_to_pr_auc_summary_table_excel: str = args.path_to_pr_auc_summary_table_excel
+path_to_full_cohort_summary_pkls: str = args.path_to_full_cohort_summary_pkls
+full_cohort_n_per_group: int = args.full_cohort_n_per_group
 mean_types: list[str] = args.mean_types
 cases: list[str] = args.cases
 n_donors: list[int] = args.n_donors
@@ -83,8 +96,15 @@ def main():
         for case in cases:
             log2_fc_str = convert_cases_to_log2_fc_str(case)
 
-            for n in n_donors:
-                path_to_pkl: str = os.path.join(path_to_summary_pkls, f'{mean}_{case}_{n}.pkl')
+            # The sweep sub-samples donors from the full simulated cohort, so the full cohort with all case donors
+            # affected (proportion 1.0) is its largest cohort.
+            pkls_per_n: list[tuple[int, str]] = [
+                (n, os.path.join(path_to_summary_pkls, f'{mean}_{case}_{n}.pkl')) for n in n_donors
+            ] + [
+                (full_cohort_n_per_group // 2, os.path.join(path_to_full_cohort_summary_pkls, f'{mean}_{case}_1.0.pkl')),
+            ]
+
+            for n, path_to_pkl in pkls_per_n:
 
                 if not os.path.exists(path_to_pkl):
                     raise FileNotFoundError(f"File not found: {path_to_pkl}")
