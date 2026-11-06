@@ -1,0 +1,60 @@
+# Snakemake profile for Arrhenius (naiss2026-3-553), based on the lab template. Run the controller from simulation/ on
+# the login node inside tmux; it only submits and monitors, every rule runs as its own Slurm job in the container:
+#   ml Python/3.13.5
+#   source /nobackup/proj/disk/naiss2026-3-553/apps/envs/snakemake-9.27.0/bin/activate
+#   snakemake --profile workflow/profiles/arrhenius run_all
+#   snakemake -s workflow/prefilters/Snakefile --profile workflow/profiles/arrhenius plot_all
+executor: slurm
+
+# Max concurrent Slurm jobs (no per-user QOS limit on Arrhenius; be considerate).
+jobs: 200
+
+# Apptainer image cache must be on shared project storage: the controller pulls on the login node and compute nodes
+# run the images. Several steps write intermediates to /tmp, which is bound to the private per-job scratch directory
+# (~6.7 GB per allocated core).
+software-deployment-method: apptainer
+apptainer-prefix: "/nobackup/proj/disk/naiss2026-3-553/apps/apptainer"
+apptainer-args: "--bind /nobackup/proj/disk/naiss2026-3-553 --bind /scratch/local:/tmp"
+
+default-resources:
+  slurm_account: "naiss2026-3-553-cpu"
+  slurm_partition: "cpu"
+  runtime: 60                 # minutes; max 4320 (3 days)
+  mem_mb: 2765                # = 1 core's share. If you raise mem_mb, raise threads to ceil(mem_mb / 2765)
+
+# Cores and memory are billed together (~2.7 GB per core): give the memory-heavy rules the cores they are billed for
+set-threads:
+  fit_umap: 24
+  export_producible_ligands_and_targets: 24
+  plot_umap_only_simulated: 6
+  plot_umap_original_vs_simulated: 6
+  normalize_for_neuronchat: 6
+  run_neuronchat: 6
+  run_neuronchat_comparison: 6
+  simulate_SPARSim_control_group: 6
+  simulate_SPARSim_case_group_0_3: 6
+  simulate_SPARSim_case_group_0_5: 6
+  simulate_SPARSim_case_group_1: 6
+  simulate_SPARSim_case_group_1_5: 6
+  simulate_SPARSim_case_group_0: 6
+  combine_SPARSim_datasets: 5
+  combine_SPARSim_datasets_n_sweep: 5
+  normalize_datasets: 3
+  normalize_datasets_n_sweep: 3
+  extend_expected_perturbed_pathways: 2
+  update_loom_version: 2
+  create_summary_statistics_n_sweep: 2
+
+# Resubmit failed jobs once (e.g. transient node problems)
+retries: 1
+
+# Slurm/Lustre can be slow to show finished outputs.
+latency-wait: 60
+
+rerun-incomplete: true
+printshellcmds: true
+
+# Rerun only when inputs are newer than outputs. With the default triggers, code edits and the new environment would
+# rerun the simulation and the normalization; reruns of the MNC step are requested explicitly with --forcerun.
+rerun-triggers:
+  - mtime
