@@ -50,6 +50,14 @@ def convert_cases_to_log2_fc_str(case: str) -> str:
     else:
         raise ValueError(f"Unknown case type: {case}")
 
+def seconds_between(start: str, end: str) -> float:
+    """
+    Duration in seconds between two timestamps written by 9_run_NeuronChat.R. The diff.time.* columns of that script are
+    not used: R picks their unit (seconds, minutes or hours) per value, so they cannot be converted with one factor.
+    """
+    return (pd.Timestamp(end) - pd.Timestamp(start)).total_seconds()
+
+
 def split_timing_tuple(timing_tuple: tuple[float, float]) -> tuple[float, float, float]:
     """
     Split a timing tuple into start, end, and difference.
@@ -121,11 +129,6 @@ def main():
                 # Columns are: start.time.reading_loom	end.time.reading_loom	diff.time.reading_loom	start.time.m0	end.time.m0.ctrl	end.time.m0	diff.time.m0.ctrl	diff.time.m0.case	diff.time.m0	start.time.m100	end.time.m100.ctrl	end.time.m100	diff.time.m100.ctrl	diff.time.m100.case	diff.time.m100
                 timing_results_df: pd.DataFrame = pd.read_csv(path_to_timing_results_csv)
 
-                # Convert all the diff.time.* columns from minutes to seconds
-                for col in timing_results_df.columns:
-                    if col.startswith('diff.time.'):
-                        timing_results_df[col] = timing_results_df[col] * 60
-
                 # Load the timing comparison results
                 # Comlumns are: case	proportion	dataset_id	start_time_m0	end_time_m0	start_time_m100	end_time_m100	duration_m0_secs	duration_m100_secs
                 timing_comparison_results_df: pd.DataFrame = pd.read_csv(path_to_timing_comparison_results_csv)
@@ -138,21 +141,31 @@ def main():
 
                     'Start Reading Loom Time': timing_results_df['start.time.reading_loom'].values[0],
                     'End Reading Loom Time': timing_results_df['end.time.reading_loom'].values[0],
-                    'Difference Reading Loom Time': timing_results_df['diff.time.reading_loom'].values[0],
+                    'Difference Reading Loom Time': seconds_between(
+                        timing_results_df['start.time.reading_loom'].values[0], timing_results_df['end.time.reading_loom'].values[0],
+                    ),
 
                     'Start NeuronChat Time CTRL M0': timing_results_df['start.time.m0'].values[0],
                     'End NeuronChat Time CTRL M0': timing_results_df['end.time.m0.ctrl'].values[0],
-                    'Difference NeuronChat Time CTRL M0': timing_results_df['diff.time.m0.ctrl'].values[0],
+                    'Difference NeuronChat Time CTRL M0': seconds_between(
+                        timing_results_df['start.time.m0'].values[0], timing_results_df['end.time.m0.ctrl'].values[0],
+                    ),
                     'Start NeuronChat Time CASE M0': timing_results_df['end.time.m0.ctrl'].values[0],
                     'End NeuronChat Time CASE M0': timing_results_df['end.time.m0'].values[0],
-                    'Difference NeuronChat Time CASE M0': timing_results_df['diff.time.m0.case'].values[0],
+                    'Difference NeuronChat Time CASE M0': seconds_between(
+                        timing_results_df['end.time.m0.ctrl'].values[0], timing_results_df['end.time.m0'].values[0],
+                    ),
 
                     'Start NeuronChat Time CTRL M100': timing_results_df['start.time.m100'].values[0],
                     'End NeuronChat Time CTRL M100': timing_results_df['end.time.m100.ctrl'].values[0],
-                    'Difference NeuronChat Time CTRL M100': timing_results_df['diff.time.m100.ctrl'].values[0],
+                    'Difference NeuronChat Time CTRL M100': seconds_between(
+                        timing_results_df['start.time.m100'].values[0], timing_results_df['end.time.m100.ctrl'].values[0],
+                    ),
                     'Start NeuronChat Time CASE M100': timing_results_df['end.time.m100.ctrl'].values[0],
                     'End NeuronChat Time CASE M100': timing_results_df['end.time.m100'].values[0],
-                    'Difference NeuronChat Time CASE M100': timing_results_df['diff.time.m100.case'].values[0],
+                    'Difference NeuronChat Time CASE M100': seconds_between(
+                        timing_results_df['end.time.m100.ctrl'].values[0], timing_results_df['end.time.m100'].values[0],
+                    ),
 
                     'Start Comparison Time M0': timing_comparison_results_df['start_time_m0'].values[0],
                     'End Comparison Time M0': timing_comparison_results_df['end_time_m0'].values[0],
