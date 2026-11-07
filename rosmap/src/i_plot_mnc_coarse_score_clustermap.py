@@ -58,7 +58,13 @@ parser.add_argument(
     '--condition',
     type=str,
     default='AD',
-    help='Condition whose donors are clustered; z-scores are computed within this condition.'
+    help='Condition whose donors are clustered and shown.'
+)
+parser.add_argument(
+    '--reference_condition',
+    type=str,
+    default='NCI',
+    help='Condition whose per-tetrad mean and standard deviation standardise the scores of --condition.'
 )
 parser.add_argument(
     '--width_in_cm',
@@ -82,6 +88,7 @@ statistical_test: str = args.statistical_test
 selection: str = args.selection
 significance_threshold: float = args.significance_threshold
 condition: str = args.condition
+reference_condition: str = args.reference_condition
 
 width_in_cm: float = args.width_in_cm
 height_in_cm: float = args.height_in_cm
@@ -111,8 +118,8 @@ def tetrad_label(source: str, receiver: str, interaction: str) -> str:
     return f'{short(source)} → {short(receiver)}: {interaction}'
 
 
-def get_score_matrix(mnc_object: MultiNeuronChatObject, tetrads: pd.DataFrame) -> pd.DataFrame:
-    """Communication scores of the donors of the selected condition as a tetrads x donors matrix."""
+def get_score_matrix(mnc_object: MultiNeuronChatObject, tetrads: pd.DataFrame, condition: str) -> pd.DataFrame:
+    """Communication scores of the donors of one condition as a tetrads x donors matrix."""
     scores: xr.DataArray = mnc_object.communication_score_dict[condition]
     rows = {
         tetrad_label(row.source, row.receiver, row.interaction): scores.loc[:, row.source, row.receiver, row.interaction].to_numpy()
@@ -128,8 +135,9 @@ def main():
             os.makedirs(output_dir)
 
     mnc_object: MultiNeuronChatObject = MultiNeuronChatObject.load(path_to_mnc_object)
-    if condition not in mnc_object.condition_names:
-        raise ValueError(f"Unknown condition '{condition}', expected one of {list(mnc_object.condition_names)}")
+    for name in [condition, reference_condition]:
+        if name not in mnc_object.condition_names:
+            raise ValueError(f"Unknown condition '{name}', expected one of {list(mnc_object.condition_names)}")
 
     tetrads: pd.DataFrame = select_tetrads(mnc_object)
     if tetrads.empty:
@@ -137,13 +145,16 @@ def main():
         pd.DataFrame(columns=['subject', 'dendrogram_position']).to_csv(path_to_donor_order_csv, index=False)
         return
 
-    scores: pd.DataFrame = get_score_matrix(mnc_object, tetrads)
+    scores: pd.DataFrame = get_score_matrix(mnc_object, tetrads, condition)
+    reference_scores: pd.DataFrame = get_score_matrix(mnc_object, tetrads, reference_condition)
 
-    # Scores differ by orders of magnitude between tetrads, so standardise every tetrad across the donors of the condition.
-    # Donors lacking a cell type have no score; they are set to the tetrad mean (z = 0) for clustering and drawn grey.
-    z_scores = scores.sub(scores.mean(axis=1), axis=0).div(scores.std(axis=1), axis=0)
+    # Scores differ by orders of magnitude between tetrads, so standardise every tetrad by the mean and standard deviation
+    # of the reference donors; z then shows how far each donor lies from the reference group.
+    # Donors lacking a cell type have no score; they are set to the tetrad's mean z within the condition for clustering
+    # (so they do not pull the donor clustering either way) and drawn grey.
+    z_scores = scores.sub(reference_scores.mean(axis=1), axis=0).div(reference_scores.std(axis=1), axis=0)
     missing = z_scores.isna()
-    z_scores_filled = z_scores.fillna(0.0)
+    z_scores_filled = z_scores.T.fillna(z_scores.mean(axis=1)).T
 
     donor_linkage = hierarchy.linkage(z_scores_filled.T.to_numpy(), method='ward')
     tetrad_linkage = hierarchy.linkage(z_scores_filled.to_numpy(), method='ward') if len(z_scores) > 1 else None
@@ -179,7 +190,7 @@ def main():
     grid.ax_cbar.set_yticks([-z_score_limit, 0, z_score_limit])
     grid.ax_cbar.set_yticklabels([f'≤ {-z_score_limit:g}', '0', f'≥ {z_score_limit:g}'])
     grid.ax_cbar.tick_params(labelsize=5)
-    grid.ax_cbar.set_title('z-score', fontsize=6)
+    grid.ax_cbar.set_title(f'z-score\nvs {reference_condition}', fontsize=6)
 
     # The title goes inside the figure, so the saved file is exactly width_in_cm x height_in_cm
     title_height: float = 0.6 * cm / grid.figure.get_figheight()
@@ -187,7 +198,7 @@ def main():
     grid.ax_cbar.set_position((0.035, 0.82 - title_height, 0.015, 0.12))  # far enough right for the "z-score" title
 
     selection_label = f'BH-adj. p < {significance_threshold}' if selection == 'significant' else f'top {len(z_scores)} by p-value'
-    grid.figure.suptitle(f'{statistical_test}: communication scores, {selection_label}, {condition} donors only', fontsize=7, y=0.995, va='top')
+    grid.figure.suptitle(f'{statistical_test}: communication scores, {selection_label}, {condition} donors z-scored to {reference_condition}', fontsize=7, y=0.995, va='top')
 
     grid.figure.savefig(path_to_clustermap_png, dpi=300)  # not grid.savefig, which defaults to bbox_inches="tight"
     grid.figure.savefig(path_to_clustermap_pdf, dpi=300)

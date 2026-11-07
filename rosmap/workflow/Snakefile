@@ -312,7 +312,8 @@ rule plot_score_clustermap_AD_only:
             --statistical_test {wildcards.test} \
             --selection {wildcards.selection} \
             --significance_threshold {wildcards.threshold} \
-            --condition AD
+            --condition AD \
+            --reference_condition NCI
         """
 
 rule plot_clinical_covariates:
