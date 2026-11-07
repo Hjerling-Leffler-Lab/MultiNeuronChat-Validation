@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import cm, statistical_test_colors, load_curve_data, draw_beeswarm, with_points_path
+from utils import cm, statistical_test_colors, statistical_test_short, load_curve_data, draw_beeswarm, with_points_path
 
 from scipy import stats
 
@@ -149,7 +149,7 @@ def main():
                 for precision, recall, _ in curves[label]:
                     axs.plot(recall, precision, color=color, alpha=0.3, linewidth=0.5)
 
-            axs.plot(mean_recall, mean_precision, label=f'{label} (AUC = {auc_mean:.2f} $\pm$ {auc_std:.2f})', color=color)
+            axs.plot(mean_recall, mean_precision, label=f'{statistical_test_short.get(label, label)} (AUC = {auc_mean:.2f} $\pm$ {auc_std:.2f})', color=color)
             axs.fill_between(mean_recall, mean_precision - std_precision, mean_precision + std_precision, alpha=0.3,
                              color=color)
 
@@ -182,7 +182,7 @@ def main():
         auc_mean = np.mean(pr_aucs[label])
         auc_std = np.std(pr_aucs[label])
 
-        axs.plot(mean_recall, mean_precision, label=f'{label} (AUC = {auc_mean:.2f} $\pm$ {auc_std:.2f})', color=color)
+        axs.plot(mean_recall, mean_precision, label=f'{statistical_test_short.get(label, label)} (AUC = {auc_mean:.2f} $\pm$ {auc_std:.2f})', color=color)
         axs.fill_between(mean_recall, mean_precision - std_precision, mean_precision + std_precision, alpha=0.3,
                          color=color)
         # if plot_std2_single_plot:

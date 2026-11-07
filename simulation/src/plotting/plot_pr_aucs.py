@@ -6,7 +6,7 @@ import scipy
 
 import matplotlib.pyplot as plt
 
-from utils import cm, statistical_test_colors, load_curve_data, convert_mean_type_label, convert_p_value_string_to_stars, convert_cases_l2fc_label, draw_beeswarm, with_points_path
+from utils import cm, statistical_test_colors, statistical_test_short, load_curve_data, convert_mean_type_label, convert_p_value_string_to_stars, convert_cases_l2fc_label, draw_beeswarm, with_points_path
 
 import argparse
 
@@ -233,7 +233,7 @@ def main():
                     x=[x + x_offset_per_test[j] for x in x_positions],
                     y=mean_aucs_per_statistical_test[statistical_test],
                     yerr=std_aucs_per_statistical_test[statistical_test],
-                    label=statistical_test,
+                    label=statistical_test_short.get(statistical_test, statistical_test),
                     color=colors[j],
                     fmt='-o',
                     capsize=1.5,

@@ -15,6 +15,7 @@ from prefilter_utils import (
 )
 from utils import (
     cm,
+    statistical_test_short,
     draw_beeswarm,
     median_and_iqr_errors,
     with_points_path,
@@ -144,7 +145,7 @@ def plot_filters(
             )
 
     for metric, metric_ax in (('Precision', precision_ax), ('Recall', recall_ax)):
-        metric_ax.set_title(f'{metric} ({statistical_test})', fontsize=font_size)
+        metric_ax.set_title(f'{metric} ({statistical_test_short.get(statistical_test, statistical_test)})', fontsize=font_size)
         metric_ax.set_yticks(np.arange(0, 1.1, 0.2))
         metric_ax.set_ylim(0, 1.05)
         metric_ax.set_xlim(x_positions[0] - 0.5, x_positions[-1] + 0.5)
