@@ -1436,7 +1436,7 @@ rule run_MultiNeuronChat:
         dataset_index="[0-9]+",
     resources:
         slurm_partition="cpu",
-        runtime=30,              # 30 min (a run takes up to 15 min)
+        runtime=120,             # 2 hours (30 min was too short for some runs on Arrhenius)
         mem_mb=8_000,            # 8 GB
     shell:
         """
