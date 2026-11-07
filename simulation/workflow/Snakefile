@@ -154,8 +154,8 @@ rule plot_all:
         path_to_timing_result_summary_csv='results/Timing_results/T3_MNC_Runtime.csv',
         path_to_timing_result_summary_xlsx='results/Timing_results/T3_MNC_Runtime.xlsx',
 
-        # NeuronChat runtime on the same datasets
-        path_to_neuronchat_timing_summary_xlsx='results/tables/T3_NeuronChat_Runtime.xlsx',
+        # MultiNeuronChat and NeuronChat runtimes in one workbook (Supplementary Table T3)
+        path_to_runtime_table_excel='results/tables/T3_Runtime.xlsx',
 
         # Table for performed perturbations
         path_to_gene_perturbations_excel="results/tables/T2_perturbations.xlsx",
@@ -710,6 +710,26 @@ rule create_neuronchat_timing_summary_table:
         --path_to_timing_comparison_results {params.path_to_timing_comparison_results} \
         --path_to_timing_result_summary_csv {output.path_to_timing_result_summary_csv} \
         --path_to_timing_result_summary_xlsx {output.path_to_timing_result_summary_xlsx}
+        """
+
+rule create_runtime_table:
+    input:
+        path_to_script='src/tables/create_runtime_table.py',
+
+        path_to_mnc_runtime_csv='results/Timing_results/T3_MNC_Runtime.csv',
+        path_to_neuronchat_runtime_csv='results/tables/T3_NeuronChat_Runtime.csv',
+    output:
+        path_to_runtime_table_excel='results/tables/T3_Runtime.xlsx',
+    resources:
+        slurm_partition="cpu",
+        runtime=10,                 # 10 min
+        mem_mb=800,                 # 800 MB
+    shell:
+        """
+        python {input.path_to_script} \
+        --path_to_mnc_runtime_csv {input.path_to_mnc_runtime_csv} \
+        --path_to_neuronchat_runtime_csv {input.path_to_neuronchat_runtime_csv} \
+        --path_to_runtime_table_excel {output.path_to_runtime_table_excel}
         """
 
 rule create_simulation_summary_table:
