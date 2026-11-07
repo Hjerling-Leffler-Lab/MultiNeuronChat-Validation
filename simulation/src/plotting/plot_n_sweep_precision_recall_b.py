@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FixedLocator, NullLocator
 
 from utils import (
     cm,
@@ -96,19 +95,17 @@ def plot_tests_vs_n(
     """
     Per test against the cohort size:
     (a) PR AUC (a ranking metric, no significance threshold),
-    (b) recall and (c) precision of the calls at BH-adjusted p < alpha,
-    Markers in (a)-(c) show the median over datasets, bars the interquartile range.
-    (d) the detectability floor: the smallest number of triples that must reach the minimal attainable p-value
-        together before BH can call anything (line), against the number of triples that actually reach it (markers).
-    With show_points, the value of every dataset is overlaid as a beeswarm in (a)-(d) and the tests are dodged
+    (b) recall and (c) precision of the calls at BH-adjusted p < alpha.
+    Markers show the median over datasets, bars the interquartile range.
+    With show_points, the value of every dataset is overlaid as a beeswarm and the tests are dodged
     further apart.
     """
     x_positions: np.ndarray = np.arange(len(n_per_group))
     dodge_step: float = 0.25 if show_points else 0.12
     offsets: np.ndarray = (np.arange(len(statistical_tests)) - (len(statistical_tests) - 1) / 2) * dodge_step
 
-    fig, (auc_ax, recall_ax, precision_ax, floor_ax) = plt.subplots(
-        1, 4, figsize=(width_in_cm * cm, height_in_cm * cm),
+    fig, (auc_ax, recall_ax, precision_ax) = plt.subplots(
+        1, 3, figsize=(width_in_cm * cm, height_in_cm * cm),
     )
 
     case_df: pd.DataFrame = df[df['Case'] == case]
@@ -135,39 +132,8 @@ def plot_tests_vs_n(
             ax.errorbar(x_positions + offset, medians, yerr=iqr_errors, **line_kwargs)
             swarms.extend((ax, x, values, color) for x, values in zip(x_positions + offset, values_per_n))
 
-        # Observed triples at (or below) the floor, only where the floor binds (more than one triple needed).
-        # Where one triple suffices, the floor is far below any realised p-value and the count carries no meaning.
-        needed, _, _ = summarise(test_df, 'N Needed At Floor', n_per_group)
-        at_floor, _, _ = summarise(test_df, 'N At Floor', n_per_group)
-        binds: np.ndarray = needed > 1
-        floor_ax.plot(
-            (x_positions + offset)[binds], at_floor[binds], linestyle='none', marker=test_markers[statistical_test],
-            color=color, markersize=3.5, label=f'{statistical_test_short[statistical_test]}: at floor', zorder=2,
-        )
-        at_floor_values: list[np.ndarray] = finite_values_per_n(test_df, 'N At Floor', n_per_group)
-        swarms.extend(
-            (floor_ax, x, values, color)
-            for x, values, bind in zip(x_positions + offset, at_floor_values, binds) if bind
-        )
-
     _, _, n_finite = summarise(case_df[case_df['Test'] == 'KS'], 'Precision', n_per_group)
     mark_no_calls(precision_ax, x_positions, n_finite, font_size)
-
-    # Theoretical requirement (the same for every rank test) from the measured number of tested hypotheses.
-    needed, _, _ = summarise(case_df, 'N Needed At Floor', n_per_group)
-    floor_ax.plot(x_positions, needed, color='#3d3d3a', linewidth=1, marker='_', markersize=6, label='needed for any call')
-    n_ground_truth: float = case_df['N Ground Truth Tested'].median()
-    floor_ax.axhline(n_ground_truth, color='#6b6b6b', linewidth=0.8, linestyle=':')
-    floor_ax.text(
-        x_positions[-1] + 0.4, n_ground_truth * 1.15, f'true tetrads tested ({n_ground_truth:.0f})',
-        ha='right', va='bottom', fontsize=font_size - 1, color='#6b6b6b',
-    )
-    floor_ax.set_yscale('log')
-    floor_ax.set_ylim(0.7, 1500)
-    floor_ax.yaxis.set_major_locator(FixedLocator([1, 10, 100, 1000]))
-    floor_ax.yaxis.set_minor_locator(NullLocator())
-    floor_ax.set_yticklabels(['1', '10', '100', '1000'])
-    floor_ax.set_title('Triples at the p-value floor', fontsize=font_size)
 
     auc_ax.set_title('PR AUC', fontsize=font_size)
     recall_ax.set_title(f'Recall (BH {alpha:.0%})', fontsize=font_size)
@@ -176,14 +142,12 @@ def plot_tests_vs_n(
         ax.set_ylim(0, 1.05)
         ax.set_yticks(np.arange(0, 1.1, 0.2))
 
-    for ax in (auc_ax, recall_ax, precision_ax, floor_ax):
+    for ax in (auc_ax, recall_ax, precision_ax):
         style_axis(ax, x_positions, n_per_group, font_size)
 
     handles, labels = auc_ax.get_legend_handles_labels()
-    floor_handles, _ = floor_ax.get_legend_handles_labels()
     fig.legend(
-        handles=handles + floor_handles[-1:], labels=labels + ['floor: triples needed for any call'],
-        fontsize=font_size, loc='upper center', ncol=4, frameon=False, columnspacing=1.2,
+        handles=handles, labels=labels, fontsize=font_size, loc='upper center', ncol=3, frameon=False, columnspacing=1.2,
     )
     fig.supxlabel('Donors per group (cases = controls)', fontsize=font_size)
     fig.text(0.01, 0.99, convert_cases_l2fc_label(case), ha='left', va='top', fontsize=font_size)
@@ -212,7 +176,7 @@ def main():
     parser.add_argument('--n_donors', nargs='+', type=int, required=True, help='Donors per sex per group of the sweep')
     parser.add_argument('--full_cohort_n_per_group', type=int, required=True)
     parser.add_argument('--path_to_output_figure_tests', type=str, required=True)
-    parser.add_argument('--width_of_tests_figure_in_cm', type=float, default=18)
+    parser.add_argument('--width_of_tests_figure_in_cm', type=float, default=13.5)
     parser.add_argument('--height_of_figure_in_cm', type=float, default=6.5)
     parser.add_argument('--font_size', type=float, default=8)
 
