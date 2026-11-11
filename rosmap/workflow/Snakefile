@@ -27,7 +27,7 @@ rule run_all:
         "results/coarse/timings.pkl",
 
 # Fig. 3A circle plot, 3B-I boxplots, 3J-M ligand/target decomposition, 3N AD-only clustermap, 3O clinical covariate
-# heatmap, Supp. Fig. 6A-H sex-stratified boxplots, and the Excel summary table
+# heatmap, Supp. Fig. 6A-H sex-stratified boxplots, the zero-bar score histograms, and the Excel summary table
 rule plot_all:
     input:
         "results/figs/clinical_data_plot.pdf",
@@ -42,6 +42,7 @@ rule plot_all:
         expand("results/figs/coarse/{test_dir}/{ext}/score_clustermap_AD_only_{selection}.{ext}",test_dir=plot_test_dirs,selection=clustermap_selections,ext=["png", "pdf"]),
         expand("results/figs/coarse/{test_dir}/{ext}/clinical_covariates/summary_heatmap.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
         expand("results/figs/coarse/{test_dir}/{ext}/sex_stratified_boxplots.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
+        expand("results/figs/coarse/{test_dir}/{ext}/score_histograms.{ext}",test_dir=plot_test_dirs,ext=["png", "pdf"]),
 
         expand("results/tables/T5_ROSMAP_summary_{test}_padj_{threshold}.xlsx",zip,test=plot_tests,threshold=plot_threshold_values),
 
@@ -375,6 +376,32 @@ rule plot_sex_stratified_boxplots:
             --significance_threshold {wildcards.threshold} \
             --n_permutations {params.n_permutations} \
             --recompute
+        """
+
+rule plot_score_histograms:
+    input:
+        path_to_script="src/l_plot_mnc_coarse_score_histograms.py",
+
+        path_to_mnc_object=mnc_object,
+    output:
+        path_to_zero_fractions_csv=f"{fig_dir}/score_zero_fractions.csv",
+        path_to_histograms_png=f"{fig_dir}/png/score_histograms.png",
+        path_to_histograms_pdf=f"{fig_dir}/pdf/score_histograms.pdf",
+        path_to_single_panel_dir_png=directory(f"{fig_dir}/png/single_panels/score_histograms"),
+        path_to_single_panel_dir_pdf=directory(f"{fig_dir}/pdf/single_panels/score_histograms"),
+    params:
+        path_to_output_dir=fig_dir,
+    resources:
+        slurm_partition="cpu",
+        runtime=5,# 5 minutes
+        mem_mb=4_000,# 4 GB
+    shell:
+        """
+        python {input.path_to_script} \
+            --path_to_mnc_object {input.path_to_mnc_object} \
+            --path_to_output_dir {params.path_to_output_dir} \
+            --statistical_test {wildcards.test} \
+            --significance_threshold {wildcards.threshold}
         """
 
 rule create_rosmap_summary_table:

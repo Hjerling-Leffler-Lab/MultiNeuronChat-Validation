@@ -4,7 +4,8 @@
 #   snakemake plot_all --workflow-profile workflow/profiles/bianca
 #
 # Outputs and logs stay on Bianca. Only aggregated files may be exported, after checking each one: the circle plot,
-# clinical_covariates/summary_heatmap, results/tables/*.xlsx and the *_tests.csv / *_stats.csv / significant_tetrads.csv.
+# clinical_covariates/summary_heatmap, score_histograms, results/tables/*.xlsx and the *_tests.csv / *_stats.csv /
+# significant_tetrads.csv / score_zero_fractions.csv.
 # Box plots with donor dots, the AD-only clustermap, covariate_plots/ and the donor-order CSV are individual-level.
 executor: slurm
 
@@ -48,6 +49,8 @@ set-resources:
     slurm_partition: "core"
   plot_sex_stratified_boxplots:
     slurm_partition: "core"
+  plot_score_histograms:
+    slurm_partition: "core"
   create_rosmap_summary_table:
     slurm_partition: "core"
 
@@ -66,9 +69,10 @@ groups:
   - plot_score_clustermap_AD_only=plots
   - plot_clinical_covariates=plots
   - plot_sex_stratified_boxplots=plots
+  - plot_score_histograms=plots
   - create_rosmap_summary_table=plots
 group-components:
-  - plots=8
+  - plots=9
 
 # Resubmit failed jobs once (e.g. transient node problems)
 retries: 1
