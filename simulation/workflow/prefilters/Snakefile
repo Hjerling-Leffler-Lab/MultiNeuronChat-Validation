@@ -8,7 +8,7 @@
 
 configfile: "workflow/config.yaml"
 
-container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.9.5.dev0"
+container: "docker://ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.11.11"
 
 CASES = config["cases"]
 PROPORTIONS = config["proportions"]
