@@ -1,0 +1,88 @@
+# Snakemake profile for Bianca (sens2025558), based on the lab template. Run the controller from rosmap/ on the login
+# node inside tmux; it only submits and monitors, every rule runs as its own Slurm job in the local container:
+#   ml bioinfo-tools snakemake/9.21.0
+#   snakemake plot_all --workflow-profile workflow/profiles/bianca
+#
+# Outputs and logs stay on Bianca. Only aggregated files may be exported, after checking each one: the circle plot,
+# clinical_covariates/summary_heatmap, score_histograms, results/tables/*.xlsx and the *_tests.csv / *_stats.csv /
+# significant_tetrads.csv / score_zero_fractions.csv.
+# Box plots with donor dots, the AD-only clustermap, covariate_plots/ and the donor-order CSV are individual-level.
+executor: slurm
+
+jobs: 20
+
+# Bianca cannot pull docker:// images: the Snakefile's container is replaced by the local .sif
+config:
+  - "container=/proj/sens2025558/MultiNeuronChat/validation/container/mnc-validation_2026.9.5.dev0.sif"
+software-deployment-method: apptainer
+apptainer-args: "--bind /proj/sens2025558"
+
+default-resources:
+  slurm_account: "sens2025558"
+  slurm_partition: "core"
+  runtime: 60                 # minutes; max 14400 (10 days)
+  mem_mb: 14000               # = 1 core's share. If you raise mem_mb, raise threads to ceil(mem_mb / 14000)
+
+# The rules set the Dardel partition "cpu"; Bianca's is "core"
+set-resources:
+  join_rosmap_data:
+    slurm_partition: "core"
+  subsample_to_NCI_and_AD:
+    slurm_partition: "core"
+  join_duplicate_genes_coarse:
+    slurm_partition: "core"
+  run_normalize_rosmap_coarse:
+    slurm_partition: "core"
+  run_rosmap_coarse:
+    slurm_partition: "core"
+  plot_clinical_data:
+    slurm_partition: "core"
+  plot_p_value_circle_plots:
+    slurm_partition: "core"
+  plot_significant_boxplots:
+    slurm_partition: "core"
+  plot_ligand_target_decomposition:
+    slurm_partition: "core"
+  plot_score_clustermap_AD_only:
+    slurm_partition: "core"
+  plot_clinical_covariates:
+    slurm_partition: "core"
+  plot_sex_stratified_boxplots:
+    slurm_partition: "core"
+  plot_score_histograms:
+    slurm_partition: "core"
+  create_rosmap_summary_table:
+    slurm_partition: "core"
+
+# ~14 GB per core: steps 1-3 need 45 GB, so they get 4 cores
+set-threads:
+  join_rosmap_data: 4
+  subsample_to_NCI_and_AD: 4
+  join_duplicate_genes_coarse: 4
+
+# Every node is booted on demand, so each Slurm job can wait tens of minutes to start: run all short plot rules in one job
+groups:
+  - plot_clinical_data=plots
+  - plot_p_value_circle_plots=plots
+  - plot_significant_boxplots=plots
+  - plot_ligand_target_decomposition=plots
+  - plot_score_clustermap_AD_only=plots
+  - plot_clinical_covariates=plots
+  - plot_sex_stratified_boxplots=plots
+  - plot_score_histograms=plots
+  - create_rosmap_summary_table=plots
+group-components:
+  - plots=9
+
+# Resubmit failed jobs once (e.g. transient node problems)
+retries: 1
+
+latency-wait: 60
+
+rerun-incomplete: true
+printshellcmds: true
+
+# Rerun only when inputs are newer than outputs. With the default triggers, the switch from the docker:// image to the
+# local .sif (software-env) and code-only edits would rerun the ~7 h normalization and the ~48 h MNC run
+rerun-triggers:
+  - mtime

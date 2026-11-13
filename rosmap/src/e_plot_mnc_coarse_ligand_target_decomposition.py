@@ -57,7 +57,7 @@ parser.add_argument(
 parser.add_argument(
     '--significance_threshold',
     type=float,
-    default=0.1,
+    default=0.05,
 )
 parser.add_argument(
     '--width_in_cm_per_panel',
@@ -128,12 +128,8 @@ def plot_condition_boxes(ax, values_per_condition: list[np.ndarray], condition_n
         )
         ax.set_ylim(y_min - 0.04 * y_range, y_max + 0.22 * y_range)
 
-    # The fraction of donors at exactly zero is what separates the conditions for zero-inflated tetrads
     ax.set_xticks(positions)
-    ax.set_xticklabels(
-        [f'{condition}\n{np.mean(values == 0) * 100:.0f}% zero' for condition, values in zip(condition_names, values_per_condition)],
-        fontsize=6,
-    )
+    ax.set_xticklabels(condition_names, fontsize=6)
     ax.tick_params(axis='y', labelsize=6)
     ax.set_title(title, fontsize=7)
     ax.spines[['top', 'right']].set_visible(False)

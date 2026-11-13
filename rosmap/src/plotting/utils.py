@@ -1,19 +1,10 @@
 import os
 import re
 
+import numpy as np
+from scipy import stats
+
 cm: float = 1/2.54
-
-statistical_test_short: dict[str, str] = {
-    'KS': 'KS',
-    'CVM': 'CVM',
-    'MannWhitneyU': 'MWU'
-}
-
-statistical_test_colors: dict[str, str] = {
-    'KS': '#ca0020',
-    'CVM': '#92c5de',
-    'MannWhitneyU': '#0571b0'
-}
 
 cell_type_to_short: dict[str, str] = {
     'Astrocyte': 'Astro',
@@ -49,9 +40,22 @@ condition_colors: dict[str, str] = {
 }
 
 
+def get_adjusted_p_values(mnc_object, statistical_test: str):
+    """BH-adjusted p-values over all tested tetrads, recomputed from the raw p.
+
+    Every ROSMAP plot selects its tetrads through this function rather than the object's stored p_values_adj, so all
+    panels agree even for objects computed before the switch from BY to BH.
+    """
+    p_values = mnc_object.p_values[statistical_test]
+    tested = np.isfinite(p_values.values)
+    adjusted = np.full(p_values.shape, np.nan)
+    adjusted[tested] = stats.false_discovery_control(p_values.values[tested], method='bh')
+    return p_values.copy(data=adjusted)
+
+
 def get_significant_tetrads(mnc_object, statistical_test: str, significance_threshold: float):
-    """Return a DataFrame (source, receiver, interaction, p_adj) of tetrads below the threshold, sorted by p_adj."""
-    p_values_adj = mnc_object.p_values_adj[statistical_test].to_dataframe('p_adj').dropna()
+    """Return a DataFrame (source, receiver, interaction, p_adj) of tetrads below the BH threshold, sorted by p_adj."""
+    p_values_adj = get_adjusted_p_values(mnc_object, statistical_test).to_dataframe('p_adj').dropna()
     significant = p_values_adj[p_values_adj['p_adj'] < significance_threshold].sort_values('p_adj').reset_index()
     return significant
 

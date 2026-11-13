@@ -1,7 +1,9 @@
 """NCI vs AD communication scores of every significant tetrad against disease severity and potential confounders.
 
-Standalone: deliberately not part of the Snakefile, because it needs the controlled-access clinical data and so runs on
-Bianca. Run it before k_plot_mnc_coarse_sex_stratified_boxplots.py, which follows up on the sex effects found here.
+Run by the Snakefile rule plot_clinical_covariates (part of plot_all). It needs the controlled-access clinical data, so it
+runs on Bianca. k_plot_mnc_coarse_sex_stratified_boxplots.py follows up on the sex effects found here.
+
+Tetrads are selected with BH-adjusted p recomputed from the raw p (plotting.utils.get_significant_tetrads).
 
 Usage (inside the validation container, from code/validation/rosmap):
     python src/j_plot_mnc_coarse_clinical_covariates.py \
@@ -38,7 +40,7 @@ from multineuronchat import MultiNeuronChatObject
 
 matplotlib.rcParams['pdf.fonttype'] = 42  # editable text in Illustrator / Inkscape
 
-from plotting.utils import cm, cell_type_to_short, condition_colors, tetrad_file_stem
+from plotting.utils import cm, cell_type_to_short, condition_colors, get_significant_tetrads, tetrad_file_stem
 
 parser = argparse.ArgumentParser(description='Communication scores of the significant ROSMAP tetrads vs clinical covariates.')
 
@@ -69,13 +71,6 @@ parser.add_argument(
     default=0.05,
 )
 parser.add_argument(
-    '--p_value_correction',
-    type=str,
-    default='bh',
-    choices=['bh', 'by', 'stored'],
-    help="Re-adjust the raw p-values over all tested tetrads ('bh'/'by'), or use the object's stored adjusted p ('stored')",
-)
-parser.add_argument(
     '--panel_size_in_cm',
     type=float,
     default=5.0,
@@ -103,7 +98,7 @@ braak_labels: dict[int, str] = {0: '0', 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: '
 sex_labels: dict[int, str] = {0: 'F', 1: 'M'}
 
 
-def format_p_value(p: float) -> str:
+def format_bare_p_value(p: float) -> str:
     if np.isnan(p):
         return 'n.a.'
     return f'{p:.1e}' if p < 0.001 else f'{p:.3f}'
@@ -120,22 +115,6 @@ def load_clinical_data() -> pd.DataFrame:
     clinical_data['age_death'] = pd.to_numeric(clinical_data['age_death'].astype(str).str.replace('+', '', regex=False), errors='coerce')
     return clinical_data[['braaksc', 'cts_mmse30_lv', 'age_death', 'pmi', 'msex']]
 
-
-
-def get_adjusted_p_values(mnc_object: MultiNeuronChatObject):
-    """Adjusted p-values for the chosen test. Objects computed before the BH switch store BY, so re-adjust the raw p."""
-    if args.p_value_correction == 'stored':
-        return mnc_object.p_values_adj[args.statistical_test]
-    p_values = mnc_object.p_values[args.statistical_test]
-    tested = np.isfinite(p_values.values)
-    adjusted = np.full(p_values.shape, np.nan)
-    adjusted[tested] = stats.false_discovery_control(p_values.values[tested], method=args.p_value_correction)
-    return p_values.copy(data=adjusted)
-
-
-def get_significant_tetrads(mnc_object: MultiNeuronChatObject) -> pd.DataFrame:
-    p_values_adj = get_adjusted_p_values(mnc_object).to_dataframe('p_adj').dropna()
-    return p_values_adj[p_values_adj['p_adj'] < args.significance_threshold].sort_values('p_adj').reset_index()
 
 
 def get_tetrad_df(mnc_object, clinical_data, source: str, receiver: str, interaction: str) -> pd.DataFrame:
@@ -233,13 +212,13 @@ def add_brackets(ax, comparisons: list[tuple[float, float, float]], threshold: f
         levels[level].append((x_left, x_right))
         y = top + 0.02 * y_range + level * step
         ax.plot([x_left, x_left, x_right, x_right], [y, y + bracket_height, y + bracket_height, y], color='black', linewidth=0.6, clip_on=False)
-        ax.text((x_left + x_right) / 2, y + 1.4 * bracket_height, format_p_value(p), ha='center', va='bottom', fontsize=5)
+        ax.text((x_left + x_right) / 2, y + 1.4 * bracket_height, format_bare_p_value(p), ha='center', va='bottom', fontsize=5)
     ax.set_ylim(bottom, top + 0.02 * y_range + len(levels) * step)
 
 
 def spearman_line(df: pd.DataFrame, x_column: str, label: str) -> str:
     rho, p, _ = spearman(df, x_column)
-    return f'{label}: ρ = {rho:.2f}, p = {format_p_value(p)}'
+    return f'{label}: ρ = {rho:.2f}, p = {format_bare_p_value(p)}'
 
 
 def plot_mmse(df: pd.DataFrame, nci: str, ad: str, title: str, sub_dir: str):
@@ -305,7 +284,7 @@ def plot_sex(df: pd.DataFrame, conditions: list[str], title: str, sub_dir: str):
             positions.append(position)
             tick_labels.append(f'{sex_label}\n{condition}')
         _, p, _ = sex_test(condition_df)
-        lines.append(f'{condition}: MWU p = {format_p_value(p)}')
+        lines.append(f'{condition}: MWU p = {format_bare_p_value(p)}')
         comparisons.append((3 * condition_index, 3 * condition_index + 1, p))
     ax.set_xticks(positions)
     ax.set_xticklabels(tick_labels, fontsize=6)
@@ -355,7 +334,7 @@ def plot_summary_heatmap(summary: pd.DataFrame):
     for i in range(len(row_order)):
         for j in range(len(column_order)):
             value = p.iat[i, j]
-            ax.text(j, i, format_p_value(value), ha='center', va='center', fontsize=4, fontweight='bold' if value < 0.05 else 'normal')
+            ax.text(j, i, format_bare_p_value(value), ha='center', va='center', fontsize=4, fontweight='bold' if value < 0.05 else 'normal')
     ax.set_xticks(range(len(column_order)))
     ax.set_xticklabels(column_order, fontsize=6, rotation=90)
     ax.set_yticks(range(len(row_order)))
@@ -374,8 +353,8 @@ def main():
     nci, ad = mnc_object.condition_names
     clinical_data = load_clinical_data()
 
-    significant = get_significant_tetrads(mnc_object)
-    print(f'{len(significant)} tetrads with {args.statistical_test} {args.p_value_correction.upper()}-adjusted p < {args.significance_threshold}:')
+    significant = get_significant_tetrads(mnc_object, args.statistical_test, args.significance_threshold)
+    print(f'{len(significant)} tetrads with {args.statistical_test} BH-adjusted p < {args.significance_threshold}:')
     print(significant.to_string(index=False))
     if len(significant) == 0:
         return

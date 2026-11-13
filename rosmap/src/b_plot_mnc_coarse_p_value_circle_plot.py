@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 import argparse
 
-from plotting.utils import cell_type_to_short
+from plotting.utils import cell_type_to_short, get_adjusted_p_values
 
 parser = argparse.ArgumentParser(description='Plot p-value circle plot for MNC object.')
 
@@ -132,6 +132,8 @@ def main():
             os.makedirs(output_dir)
 
     mnc_object: MultiNeuronChatObject = MultiNeuronChatObject.load(path_to_mnc_object)
+    # The circle plot reads the stored adjusted p; replace them with BH recomputed from the raw p, as in all other plots
+    mnc_object.p_values_adj[statistical_test] = get_adjusted_p_values(mnc_object, statistical_test)
 
     fig, axs = plt.subplots(1, 1, figsize=(width_in_cm_main * cm, height_in_cm_main * cm))
     legend_fig, legend_axs = plt.subplots(1, 1, figsize=(width_in_cm_legend_cell_type * cm, height_in_cm_legend_cell_type * cm))

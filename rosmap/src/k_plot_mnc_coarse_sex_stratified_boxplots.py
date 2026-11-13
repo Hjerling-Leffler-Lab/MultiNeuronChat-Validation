@@ -1,8 +1,9 @@
 """Sex-stratified NCI vs AD permutation tests and box plots for every significant tetrad.
 
-Standalone: deliberately not part of the Snakefile, because the permutations take ~12 min (50,000 shuffles x 4 tests x 8
-tetrads). The test results are cached in --path_to_tests_csv; later runs only replot from that CSV unless --recompute is
-given (or the significant tetrads / number of permutations changed). Needs the clinical data, so it runs on Bianca.
+Run by the Snakefile rule plot_sex_stratified_boxplots (part of plot_all); the permutations take ~12 min (50,000 shuffles
+x 4 tests x 8 tetrads). The test results are cached in sex_stratified_tests.csv; a manual run only replots from that CSV
+unless --recompute is given (or the significant tetrads / number of permutations changed). Snakemake removes the CSV
+before rerunning the rule, so the tests are always recomputed there. Needs the clinical data, so it runs on Bianca.
 
 Usage (inside the validation container, from code/validation/rosmap):
     python src/k_plot_mnc_coarse_sex_stratified_boxplots.py \
@@ -36,7 +37,7 @@ import matplotlib.pyplot as plt
 
 from multineuronchat import MultiNeuronChatObject
 
-from plotting.utils import cm, cell_type_to_short, condition_colors, tetrad_file_stem, save_single_panel
+from plotting.utils import cm, cell_type_to_short, condition_colors, get_significant_tetrads, tetrad_file_stem, save_single_panel
 
 matplotlib.rcParams['pdf.fonttype'] = 42  # editable text in Illustrator / Inkscape
 
@@ -136,16 +137,11 @@ def load_clinical_data() -> pd.DataFrame:
     return clinical_data[['cts_mmse30_lv', 'msex']]
 
 
-def get_significant_tetrads(mnc_object: MultiNeuronChatObject) -> pd.DataFrame:
-    """BH over all tested tetrads, re-adjusted from the raw p, so objects from before the BH switch (storing BY) work too."""
-    p_values = mnc_object.p_values[statistical_test]
-    tested = np.isfinite(p_values.values)
-    adjusted = np.full(p_values.shape, np.nan)
-    adjusted[tested] = stats.false_discovery_control(p_values.values[tested], method='bh')
-    p_values_adj = p_values.copy(data=adjusted).to_dataframe('p_adj').dropna()
-    raw = p_values.to_dataframe('p_raw')['p_raw']
-    significant = p_values_adj[p_values_adj['p_adj'] < significance_threshold].sort_values('p_adj')
-    return significant.join(raw).reset_index()
+def get_significant_tetrads_with_raw_p(mnc_object: MultiNeuronChatObject) -> pd.DataFrame:
+    """Significant tetrads (BH over all tested tetrads, see plotting.utils) with their raw p-values added."""
+    significant = get_significant_tetrads(mnc_object, statistical_test, significance_threshold)
+    raw = mnc_object.p_values[statistical_test].to_dataframe('p_raw')['p_raw']
+    return significant.join(raw, on=['source', 'receiver', 'interaction'])
 
 
 def get_tetrad_df(mnc_object, clinical_data, source: str, receiver: str, interaction: str) -> pd.DataFrame:
@@ -310,7 +306,7 @@ def main():
     nci, ad = mnc_object.condition_names
     clinical_data = load_clinical_data()
 
-    significant = get_significant_tetrads(mnc_object)
+    significant = get_significant_tetrads_with_raw_p(mnc_object)
     print(f'{len(significant)} tetrads with {statistical_test} BH-adjusted p < {significance_threshold}')
     if len(significant) == 0:
         return
