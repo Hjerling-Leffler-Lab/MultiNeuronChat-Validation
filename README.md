@@ -1,15 +1,83 @@
 # MultiNeuronChat — Validation Code
 
-This repository contains the computational workflows and scripts used to evaluate and validate the MultiNeuronChat method.
-It includes the code that is required to reproduce the analyses, figures, and tables presented in the MultiNeuronChat manuscript.
+This repository contains the workflows and scripts used to validate MultiNeuronChat (MNC) and to reproduce the
+analyses, figures and tables of the MultiNeuronChat manuscript. The method itself is distributed as the
+[`multineuronchat`](https://pypi.org/project/multineuronchat/) Python package and can be found on [`Github`](https://github.com/Hjerling-Leffler-Lab/MultiNeuronChat); this repository only contains the validation.
 
-The validation encompasses simulated datasets and reference data analyses, automated through Snakemake workflows executed inside a fully reproducible container environment.
+The code in this branch corresponds to the revised manuscript (revision 1, `multineuronchat` 2026.11.11).
+
+## Repository structure
+
+The repository holds two independent Snakemake workflows that share only the container:
+
+- **`simulation/`**: benchmark on simulated data with a known ground truth. SPARSim simulates control and case
+  donors from a model fitted on the control group of [Bast _et al._ (2025)](https://www.medrxiv.org/content/10.1101/2025.03.14.25323827v1).
+  Ligand and target genes are perturbed at known log2 fold changes (0.3, 0.5, 1, 1.5) in a varying fraction of
+  case donors (0.1–1.0), with 10 replicate datasets per setting. MNC must recover the perturbed
+  (sender, receiver, ligand, target) tetrads. The workflow evaluates precision/recall, compares the statistical
+  tests (KS, CVM, Mann–Whitney U) and expression-averaging modes, measures runtimes, and benchmarks against
+  NeuronChat.
+- **`rosmap/`**: application to ROSMAP single-nucleus RNA-seq data, comparing donors without cognitive
+  impairment (NCI) with Alzheimer's disease (AD) donors at the coarse cell-type annotation (CVM test,
+  BH-adjusted p < 0.05).
+
+Each workflow follows the same layout:
+
+| Path | Content |
+|---|---|
+| `workflow/Snakefile` | Workflow definition |
+| `workflow/profiles/` | Snakemake/SLURM profiles for the clusters used |
+| `src/` | Step scripts: numbered (`1_`, `2_`, …) are pipeline stages; lettered (`a_`, `b_`, …) are ROSMAP plotting steps |
+| `src/plotting/`, `src/tables/` | Figure and table generators |
+| `data/`, `model/` | Inputs (interaction database, fitted SPARSim model, ground truth) |
+| `results/` | Outputs (not tracked) |
+
+### Ground truth
+
+The simulation is evaluated against `simulation/data/simulation/expected_perturbed_pathways_gene_level.csv`,
+which contains every tetrad that includes a perturbed ligand or target gene. Together with
+`gene_perturbations_to_perform.csv`, it is generated from the interaction database
+(`data/db/interactionDB_human_extended.tsv`) and the fitted SPARSim model (`model/`) by
+`src/1_extract_ligand_target_production.R` with fixed seeds.
+
+## Running the workflows
+
+Each workflow has two top-level targets: `run_all` (simulation, normalization, MNC and NeuronChat runs) and
+`plot_all` (all figures and tables, built from the `run_all` outputs). Run them from inside `simulation/` or
+`rosmap/`:
+
+```bash
+snakemake -n run_all                                              # dry run
+snakemake --workflow-profile workflow/profiles/<profile> run_all
+snakemake --workflow-profile workflow/profiles/<profile> plot_all
+```
+
+The simulation workflow also provides:
+
+- `run_n_sweep` / `plot_n_sweep`: power analysis over the number of donors per group.
+- A separate workflow in `simulation/workflow/prefilters/` that compares the Wasserstein, variance and abundance
+  prefilters (Response to Reviewers, Fig. 1). It reads the outputs of the main simulation workflow, so run it
+  last.
+
+Before a SLURM run, set your account in the profile's `config.v8+.yaml`.
 
 ## Environment
-The code was executed on KTH's HPC cluster [Dardel](https://www.pdc.kth.se/), using Docker containers loaded via Apptainer for reproducibility. The full pipeline should be executable on any system supporting Apptainer and Snakemake.
 
-## Data Availability
-Raw and processed data from ROSMAP can be accessed through the Synapse repository under controlled access (Synapse ID: [syn3219045](https://www.synapse.org/Synapse:syn3219045) ), as part of the AMP-AD Knowledge Portal.
-Access requires data use approval from the Rush Alzheimer’s Disease Center and adherence to the AMP-AD data use terms.
+All rules run inside the container `ghcr.io/siedler/multi-neuron-chat-validation-pipeline:2026.11.11` via
+Apptainer. The workflows should run on any system with Snakemake (≥ 9) and Apptainer.
 
-All simulated datasets used for benchmarking were generated within this repository using the provided scripts. A model for generating simulated data was fitted on the control group of [Bast _et al._ (2025)](https://www.medrxiv.org/content/10.1101/2025.03.14.25323827v1).
+Because several R packages in the base recipe are installed from GitHub, a rebuild of the base image may not
+reproduce the published environment exactly; use the published image instead.
+
+The original analyses were run on [Dardel](https://www.pdc.kth.se/) (PDC, KTH). For the revision, the
+simulation was run on Arrhenius (NAISS) and the ROSMAP analysis on Bianca (UPPMAX/NAISS-SENS), the sensitive-data
+cluster required for the controlled-access ROSMAP data.
+
+## Data availability
+
+Raw and processed ROSMAP data can be accessed through the Synapse repository under controlled access (Synapse ID:
+[syn3219045](https://www.synapse.org/Synapse:syn3219045)), as part of the AMP-AD Knowledge Portal. Access requires
+data use approval from the Rush Alzheimer's Disease Center and adherence to the AMP-AD data use terms. Individual
+donor-level outputs are therefore not part of this repository.
+
+All simulated datasets are generated by the simulation workflow from the fitted model in `simulation/model/`.
